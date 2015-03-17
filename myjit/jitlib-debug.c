@@ -783,3 +783,12 @@ void jit_trace_op(struct jit *jit, jit_op *op, int verbosity)
 	printf("\n");
 	jit_tree_free(labels);	
 }
+
+#define TRACE_PREV      (1)
+#define TRACE_NEXT      (2)
+
+void jit_trace_callback(struct jit *jit, jit_op *op, int verbosity, int trace) 
+{
+	if (trace & TRACE_PREV) jit_trace_op(jit, op->prev, verbosity);
+	if (trace & TRACE_NEXT) jit_trace_op(jit, op->next, verbosity);
+}

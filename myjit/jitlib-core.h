@@ -49,6 +49,9 @@
 #define MAX(a,b) ((a) > (b) ? (a) : (b))
 #endif
 
+#define TRACE_PREV      (1)
+#define TRACE_NEXT      (2)
+
 
 typedef struct {
 	int id;
@@ -170,6 +173,7 @@ void jit_optimize_frame_ptr(struct jit * jit);
 void jit_optimize_unused_assignments(struct jit * jit);
 static int is_cond_branch_op(jit_op *op); // FIXME: rename to: jit_op_is_cond_branch
 static inline void jit_set_free(jit_set * s);
+void jit_trace_callback(struct jit *jit, jit_op *op, int verbosity, int trace);
 
 /**
  * Initialize argpos-th argument.
