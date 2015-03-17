@@ -184,6 +184,32 @@ static void emit_msg_op(struct jit * jit, jit_op * op)
 	x86_popad(jit->ip);
 }
 
+
+void jit_trace_op(struct jit *jit, jit_op *op, int verbosity);
+
+static void emit_print_op(struct jit *jit, jit_op *op, int verbosity)
+{       
+	x86_push_imm(jit->ip, verbosity);
+	x86_push_imm(jit->ip, op);
+	x86_push_imm(jit->ip, jit);
+	op->patch_addr = JIT_BUFFER_OFFSET(jit); 
+	x86_call_imm(jit->ip, printf);
+	x86_alu_reg_imm(jit->ip, X86_ADD, X86_ESP, 12);
+}
+
+static void emit_trace_op(struct jit *jit, jit_op *op)
+{       
+	x86_pushad(jit->ip);
+        
+        jit_opcode prev_code = GET_OP(op->prev);
+        jit_opcode next_code = GET_OP(op->next);
+        if ((prev_code == JIT_PROLOG) || (prev_code == JIT_LABEL) || (prev_code == JIT_PATCH)) emit_print_op(jit, op->prev, op->r_arg[0]);
+        if ((next_code != JIT_PROLOG) && (next_code != JIT_LABEL) && (next_code != JIT_PATCH)) emit_print_op(jit, op->next, op->r_arg[0]);
+
+	x86_popad(jit->ip);
+}
+
+
 static void emit_fret_op(struct jit * jit, jit_op * op)
 {
 	jit_value arg = op->r_arg[0];

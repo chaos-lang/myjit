@@ -156,6 +156,7 @@ static void jit_correct_long_imms(struct jit * jit)
 		if (GET_OP(op) == JIT_REF_DATA) continue;
 		if (GET_OP(op) == JIT_REF_CODE) continue;
 		if (GET_OP(op) == JIT_FORCE_ASSOC) continue;
+		if (GET_OP(op) == JIT_TRACE) continue;
 		int imm_arg;
 		for (int i = 1; i < 4; i++)
 			if (ARG_TYPE(op, i) == IMM) imm_arg = i - 1;
@@ -279,7 +280,13 @@ static inline void jit_prepare_reg_counts(struct jit * jit)
 			while (1) {
 				if (GET_OP(op->next) == JIT_PUTARG) xop->arg[0]++;
 				else if (GET_OP(op->next) == JIT_FPUTARG) xop->arg[1]++;
-				else break;
+				else {
+					if (GET_OP(op->next) == JIT_CALL) break;
+					if (GET_OP(op->next) != JIT_TRACE) {
+						printf("Garbage in the prepare-call block\n");
+						abort();
+					}
+				}
 				op = op->next;
 			}
 		}
@@ -428,6 +435,19 @@ void jit_generate_code(struct jit * jit)
 		if (GET_OP(op) == JIT_PROLOG)
 			*(void **)(op->arg[0]) = jit->buf + (long)op->patch_addr;
 	}
+}
+
+void jit_trace(struct jit *jit, int verbosity)
+{
+#ifdef JIT_ARCH_COMMON86
+	for (jit_op *op = jit_op_first(jit->ops)->next; op != NULL; op = op->next) {
+		jit_op * o = jit_op_new(JIT_TRACE, SPEC(IMM, NO, NO), verbosity, 0, 0, 0);
+		o->r_arg[0] = o->arg[0];
+		jit_op_prepend(op, o);
+	}
+#else
+	printf("jit_trace is not supported on this architecture\n")
+#endif
 }
 
 static void free_ops(struct jit_op * op)

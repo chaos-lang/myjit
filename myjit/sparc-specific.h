@@ -713,6 +713,8 @@ void jit_gen_op(struct jit * jit, struct jit_op * op)
 				 sparc_call_simple(jit->ip, printf);
 				 sparc_nop(jit->ip);
 				 break;
+		case JIT_TRACE: // FIXME
+				break;
 
 		case JIT_ALLOCA: break;
 

@@ -217,6 +217,7 @@ char * jit_get_op_name(struct jit_op * op)
 		case JIT_REF_CODE:	return "ref_code";
 		case JIT_REF_DATA:	return "ref_data";
 		case JIT_FULL_SPILL:	return ".full_spill";
+		case JIT_TRACE:		return ".trace";
 		case JIT_FORCE_SPILL:	return "force_spill";
 		case JIT_FORCE_ASSOC:	return "force_assoc";
 
@@ -447,6 +448,13 @@ int print_op(FILE *f, struct jit_disasm * disasm, struct jit_op *op, jit_tree *l
 		print_comment(linebuf, op);
 		goto print;
 	}
+
+	if (GET_OP(op) == JIT_TRACE) {
+		strcat(linebuf, disasm->indent_template);
+		strcat(linebuf, ".trace");
+		goto print;
+	}
+
 	
 	char * op_name = jit_get_op_name(op);
 	if ((op_name[0] == '.') && (verbosity & JIT_DEBUG_LOADS)) {
@@ -694,7 +702,6 @@ static void jit_dump_ops_combined(struct jit *jit, jit_tree *labels)
 		path = getenv("MYJIT_DISASM");
 		if (path) execlp(path, path, NULL);
 
-		// FIXME: better explanation
 		printf("myjit-disasm not found\n\n");
 		printf("In order to list myjit operations along with the machine code, the MyJIT disassembler has to be present in the current directory or its path has to be specified in the MYJIT_DISASM environment variable.\nThe disassembler's source code can be found in the \"disasm/\" directory.\n\n");
 		exit(1);
@@ -767,4 +774,12 @@ void jit_dump_ops(struct jit * jit, int verbosity)
 	if (verbosity & JIT_DEBUG_COMPILABLE) jit_dump_ops_compilable(jit, labels);
 	if (verbosity & JIT_DEBUG_COMBINED) jit_dump_ops_combined(jit, labels);
 	jit_tree_free(labels);
+}
+
+void jit_trace_op(struct jit *jit, jit_op *op, int verbosity)
+{
+	jit_tree * labels = prepare_labels(jit);
+	print_op(stdout, &jit_disasm_general, op, labels, verbosity);
+	printf("\n");
+	jit_tree_free(labels);	
 }

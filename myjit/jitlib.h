@@ -282,7 +282,8 @@ typedef enum {
 
 	// opcodes for testing and debugging purposes only
 	JIT_FORCE_SPILL	= (0x0200 << 3),
-	JIT_FORCE_ASSOC = (0x0201 << 3)
+	JIT_FORCE_ASSOC = (0x0201 << 3),
+	JIT_TRACE	= (0x0202 << 3),
 } jit_opcode;
 
 enum jit_inp_type {
@@ -334,6 +335,7 @@ void jit_free(struct jit * jit);
 
 void jit_dump_ops(struct jit * jit, int verbosity);
 void jit_check_code(struct jit *jit, int warnings);
+void jit_trace(struct jit *jit, int verbosity);
 
 void jit_enable_optimization(struct jit * jit, int opt);
 void jit_disable_optimization(struct jit * jit, int opt);
