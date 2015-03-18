@@ -316,6 +316,12 @@ static void emit_trace_op(struct jit *jit, jit_op *op)
 		if (!al->gp_regs[i].callee_saved)
 			amd64_push_reg(jit->ip, al->gp_regs[i].id);
 
+	// stack alignment
+	amd64_push_reg(jit->ip, AMD64_RBX);
+	amd64_mov_reg_reg_size(jit->ip, AMD64_RBX, AMD64_RSP, 8);
+	amd64_alu_reg_imm_size(jit->ip, X86_AND, AMD64_RSP, ~0xf, 8);
+	amd64_alu_reg_imm_size(jit->ip, X86_SUB, AMD64_RSP, 16, 8);
+
 	int trace = 0;
         jit_opcode prev_code = GET_OP(op->prev);
         jit_opcode next_code = GET_OP(op->next);
@@ -326,9 +332,12 @@ static void emit_trace_op(struct jit *jit, jit_op *op)
 	amd64_mov_reg_imm_size(jit->ip, AMD64_RSI, op, 8);
 	amd64_mov_reg_imm_size(jit->ip, AMD64_RDX, op->r_arg[0], 4);
 	amd64_mov_reg_imm_size(jit->ip, AMD64_RCX, trace, 4);
-	amd64_alu_reg_reg(jit->ip, X86_XOR, AMD64_RAX, AMD64_RAX);
+	amd64_alu_reg_reg_size(jit->ip, X86_XOR, AMD64_RAX, AMD64_RAX, 8);
 	amd64_mov_reg_imm(jit->ip, AMD64_R8, jit_trace_callback);
 	amd64_call_reg(jit->ip, AMD64_R8);
+
+	amd64_mov_reg_reg_size(jit->ip, AMD64_RSP, AMD64_RBX, 8);
+	amd64_pop_reg(jit->ip, AMD64_RBX);
 
 	for (int i = al->gp_reg_cnt - 1; i >= 0; i--)
 		if (!al->gp_regs[i].callee_saved)
