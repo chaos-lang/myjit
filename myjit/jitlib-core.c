@@ -446,7 +446,7 @@ void jit_trace(struct jit *jit, int verbosity)
 		jit_op_prepend(op, o);
 	}
 #else
-	printf("jit_trace is not supported on this architecture\n")
+	printf("jit_trace is not supported on this architecture\n");
 #endif
 }
 
