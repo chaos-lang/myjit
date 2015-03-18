@@ -309,18 +309,6 @@ static void emit_msg_op(struct jit * jit, jit_op * op)
 			amd64_pop_reg(jit->ip, al->gp_regs[i].id);
 }
 
-void jit_trace_op(struct jit *jit, jit_op *op, int verbosity);
-
-static void emit_print_op(struct jit *jit, jit_op *op, int verbosity)
-{
-	amd64_mov_reg_imm_size(jit->ip, AMD64_RDI, jit, 8);
-	amd64_mov_reg_imm_size(jit->ip, AMD64_RSI, op, 8);
-	amd64_mov_reg_imm_size(jit->ip, AMD64_RDX, verbosity, 8);
-	amd64_alu_reg_reg(jit->ip, X86_XOR, AMD64_RAX, AMD64_RAX);
-	amd64_mov_reg_imm(jit->ip, AMD64_RCX, jit_trace_op);
-	amd64_call_reg(jit->ip, AMD64_RCX);
-}
-
 static void emit_trace_op(struct jit *jit, jit_op *op)
 {
 	struct jit_reg_allocator * al = jit->reg_al;
@@ -328,10 +316,19 @@ static void emit_trace_op(struct jit *jit, jit_op *op)
 		if (!al->gp_regs[i].callee_saved)
 			amd64_push_reg(jit->ip, al->gp_regs[i].id);
 
-	jit_opcode prev_code = GET_OP(op->prev);
-	jit_opcode next_code = GET_OP(op->next);
-	if ((prev_code == JIT_PROLOG) || (prev_code == JIT_LABEL) || (prev_code == JIT_PATCH)) emit_print_op(jit, op->prev, op->r_arg[0]);
-	if ((next_code != JIT_PROLOG) && (next_code != JIT_LABEL) && (next_code != JIT_PATCH)) emit_print_op(jit, op->next, op->r_arg[0]);
+	int trace = 0;
+        jit_opcode prev_code = GET_OP(op->prev);
+        jit_opcode next_code = GET_OP(op->next);
+        if ((prev_code == JIT_PROLOG) || (prev_code == JIT_LABEL) || (prev_code == JIT_PATCH)) trace |= TRACE_PREV;
+        if ((next_code != JIT_PROLOG) && (next_code != JIT_LABEL) && (next_code != JIT_PATCH)) trace |= TRACE_NEXT;
+
+	amd64_mov_reg_imm_size(jit->ip, AMD64_RDI, jit, 8);
+	amd64_mov_reg_imm_size(jit->ip, AMD64_RSI, op, 8);
+	amd64_mov_reg_imm_size(jit->ip, AMD64_RDX, op->r_arg[0], 4);
+	amd64_mov_reg_imm_size(jit->ip, AMD64_RCX, trace, 4);
+	amd64_alu_reg_reg(jit->ip, X86_XOR, AMD64_RAX, AMD64_RAX);
+	amd64_mov_reg_imm(jit->ip, AMD64_R8, jit_trace_callback);
+	amd64_call_reg(jit->ip, AMD64_R8);
 
 	for (int i = al->gp_reg_cnt - 1; i >= 0; i--)
 		if (!al->gp_regs[i].callee_saved)
