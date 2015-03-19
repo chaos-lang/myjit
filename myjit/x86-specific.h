@@ -191,10 +191,10 @@ static void emit_trace_op(struct jit *jit, jit_op *op)
 	int trace = 0;
 	x86_pushad(jit->ip);
         
-        jit_opcode prev_code = GET_OP(op->prev);
-        jit_opcode next_code = GET_OP(op->next);
-        if ((prev_code == JIT_PROLOG) || (prev_code == JIT_LABEL) || (prev_code == JIT_PATCH)) trace |= TRACE_PREV;
-        if ((next_code != JIT_PROLOG) && (next_code != JIT_LABEL) && (next_code != JIT_PATCH)) trace |= TRACE_NEXT;
+	jit_opcode prev_code = GET_OP(op->prev);
+	jit_opcode next_code = GET_OP(op->next);
+	if ((prev_code == JIT_PROLOG) || (prev_code == JIT_LABEL) || (prev_code == JIT_PATCH)) trace |= TRACE_PREV;
+	if ((next_code != JIT_PROLOG) && (next_code != JIT_LABEL) && (next_code != JIT_PATCH)) trace |= TRACE_NEXT;
 
 	x86_push_imm(jit->ip, trace);
 	x86_push_imm(jit->ip, op->r_arg[0]);

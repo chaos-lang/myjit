@@ -123,6 +123,13 @@ void disassm_sparc(unsigned char *buf, int len)
 
 }
 
+static void set_global_addr(unsigned long global_addr)
+{
+	ud_set_pc(&dis_amd64, global_addr);
+	ud_set_pc(&dis_i386, global_addr);
+	spd_set_pc(&dis_sparc, global_addr);
+}
+
 void disassm_directive(unsigned char *buf)
 {
 	const char *xbuf = (const char *)buf;
@@ -134,13 +141,14 @@ void disassm_directive(unsigned char *buf)
 	else if (!strcmp(xbuf, ".sparc")) global_disassm_mode = SPARC;
 	else if (!strncmp(xbuf, ".addr=", 6)) {
 		global_addr = strtol(xbuf + 6, NULL, 16);
-		ud_set_pc(&dis_amd64, global_addr);
-		ud_set_pc(&dis_i386, global_addr);
-		spd_set_pc(&dis_sparc, global_addr);
+		set_global_addr(global_addr);
 		if (sizeof(void *) == 8) printf("%016lx:\n", global_addr);
 		else printf("%016lx:\n", global_addr);
 	}
-	else if (!strcmp(xbuf, ".nl")) printf("\n");
+	else if (!strncmp(xbuf, "..addr=", 7)) {
+		global_addr = strtol(xbuf + 7, NULL, 16);
+		set_global_addr(global_addr);
+	} else if (!strcmp(xbuf, ".nl")) printf("\n");
 	else printf("Unknown directive: %s\n", buf);
 } 
 

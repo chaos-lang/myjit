@@ -679,10 +679,8 @@ static inline void print_op_bytes(FILE *f, struct jit *jit, jit_op *op) {
 	fprintf(f, "\n.nl\n");
 }
 
-
-static void jit_dump_ops_combined(struct jit *jit, jit_tree *labels)
+static FILE *open_disasm()
 {
-
 	int fds[2];
 	pipe(fds);
 
@@ -710,56 +708,69 @@ static void jit_dump_ops_combined(struct jit *jit, jit_tree *labels)
 	// parent
 	close(fds[0]); // read end
 	FILE * f = fdopen(fds[1], "w");
+	return f;
+}
+
+static jit_op *print_combined_op(FILE *f, struct jit *jit, struct jit_op *op, jit_tree *labels)
+{
+	if (GET_OP(op) == JIT_DATA_BYTE) {
+		fprintf(f, ".text\n%s.byte\n", jit_disasm_general.indent_template);
+		fprintf(f, ".data\n");
+		while (op && (GET_OP(op) == JIT_DATA_BYTE)) {
+			fprintf(f, "%02x ", (unsigned char) op->arg[0]);
+			op = op->next;
+		}
+		fprintf(f, "\n");
+
+		if (!op) return NULL;
+		op = op->prev;
+		return op;	
+	}
+
+	if (GET_OP(op) == JIT_COMMENT) {
+		fprintf(f, ".comment\n");
+		print_op(f, &jit_disasm_general, op, labels, JIT_DEBUG_LOADS);
+		fprintf(f, "\n");
+		return op;
+	}
+
+	fprintf(f, ".text\n");
+	print_op(f, &jit_disasm_general, op, labels, JIT_DEBUG_LOADS);
+	fprintf(f, "\n");
+
+	switch (GET_OP(op)) {
+		case JIT_CODE_ALIGN:
+			if (op->next) {
+				fprintf(f, "\n.nl\n");
+				fprintf(f, ".addr=%lx\n", (unsigned long) (jit->buf + op->next->code_offset));
+			}
+			break;
+		case JIT_DATA_REF_CODE:
+		case JIT_DATA_REF_DATA:
+			fprintf(f, ".data\n");
+			print_op_bytes(f, jit, op);
+			break;
+
+		default:
+			if (!op->code_length) break;
+			fprintf(f, ".%s\n", platform_id());
+			print_op_bytes(f, jit, op);
+	}
+	return op;
+}
+
+
+static void jit_dump_ops_combined(struct jit *jit, jit_tree *labels)
+{
+	FILE *f = open_disasm();
 
 	fprintf(f, ".addr=%lx\n", (unsigned long)jit->buf);
 	for (jit_op * op = jit_op_first(jit->ops); op != NULL; op = op->next) {
-		if (GET_OP(op) == JIT_DATA_BYTE) {
-			fprintf(f, ".text\n%s.byte\n", jit_disasm_general.indent_template);
-			fprintf(f, ".data\n");
-			while (op && (GET_OP(op) == JIT_DATA_BYTE)) {
-				fprintf(f, "%02x ", (unsigned char) op->arg[0]);
-				op = op->next;
-			}
-			fprintf(f, "\n");
-
-			if (!op) break;
-			op = op->prev;
-			continue;	
-		}
-
-		if (GET_OP(op) == JIT_COMMENT) {
-			fprintf(f, ".comment\n");
-			print_op(f, &jit_disasm_general, op, labels, JIT_DEBUG_LOADS);
-			fprintf(f, "\n");
-			continue;
-		}
-
-		fprintf(f, ".text\n");
-		print_op(f, &jit_disasm_general, op, labels, JIT_DEBUG_LOADS);
-		fprintf(f, "\n");
-
-		switch (GET_OP(op)) {
-			case JIT_CODE_ALIGN:
-				if (op->next) {
-					fprintf(f, "\n.nl\n");
-					fprintf(f, ".addr=%lx\n", (unsigned long) (jit->buf + op->next->code_offset));
-				}
-				break;
-			case JIT_DATA_REF_CODE:
-			case JIT_DATA_REF_DATA:
-				fprintf(f, ".data\n");
-				print_op_bytes(f, jit, op);
-				break;
-
-			default:
-				if (!op->code_length) break;
-				fprintf(f, ".%s\n", platform_id());
-				print_op_bytes(f, jit, op);
-		}
+		op = print_combined_op(f, jit, op, labels);
+		if (!op) break;
 	}
 
 	fclose(f);
-	close(fds[1]);
 	wait(NULL);
 }
 
@@ -779,8 +790,18 @@ void jit_dump_ops(struct jit * jit, int verbosity)
 void jit_trace_op(struct jit *jit, jit_op *op, int verbosity)
 {
 	jit_tree * labels = prepare_labels(jit);
-	print_op(stdout, &jit_disasm_general, op, labels, verbosity);
-	printf("\n");
+	if (verbosity & JIT_DEBUG_OPS) {
+		print_op(stdout, &jit_disasm_general, op, labels, verbosity);
+		printf("\n");
+	}
+	if (verbosity & JIT_DEBUG_COMBINED) {
+		FILE *f = open_disasm();
+		fprintf(f, "..addr=%lx\n", (unsigned long) op->code_offset);
+		print_combined_op(f, jit, op, labels);
+		fclose(f);
+		wait(NULL);
+	}
+	
 	jit_tree_free(labels);	
 }
 
