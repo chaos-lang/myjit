@@ -24,6 +24,8 @@ static int emit_push_callee_saved_regs(struct jit * jit, jit_op * op);
 static int emit_push_caller_saved_regs(struct jit * jit, jit_op * op);
 static int emit_pop_callee_saved_regs(struct jit * jit);
 static int emit_pop_caller_saved_regs(struct jit * jit, jit_op * op);
+static void emit_save_all_regs(struct jit *jit, jit_op *op);
+static void emit_restore_all_regs(struct jit *jit, jit_op *op);
 
 
 static jit_hw_reg * rmap_is_associated(jit_rmap * rmap, int reg_id, int fp, jit_value * virt_reg);
@@ -173,6 +175,65 @@ static int emit_pop_caller_saved_regs(struct jit * jit, jit_op * op)
 	count += generic_pop_caller_saved_regs(jit, op, al->gp_reg_cnt, al->gp_regs, 0, al->ret_reg);
 	return count;
 }
+
+static int is_active_register(struct jit_reg_allocator *al, jit_hw_reg *reg, jit_op *op)
+{       
+	if ((GET_OP(op->next) == JIT_PUTARG) || (GET_OP(op->next) == JIT_FPUTARG) || (GET_OP(op->next) == JIT_CALL)) return 1;
+	if ((GET_OP(op->next) == JIT_RETVAL) && (reg == al->ret_reg)) return 1;
+	//if ((GET_OP(op->next) == JIT_FRETVAL) && (reg == al->fpret_reg)) return 1;
+
+	if (op->next->regmap == NULL) return 1;
+	if (op->prev->regmap == NULL) return 1;
+
+	jit_value vreg;
+	jit_hw_reg *hw = rmap_is_associated(op->regmap, reg->id, reg->fp, &vreg);
+
+	if (hw) {
+		if (op->prev && ((op->prev->live_in && jit_set_get(op->prev->live_in, vreg)) || ((op->prev->live_out && jit_set_get(op->prev->live_out, vreg))))) return 1;
+		if (op->next && ((op->next->live_in && jit_set_get(op->next->live_in, vreg)) || ((op->next->live_out && jit_set_get(op->next->live_out, vreg))))) return 1;
+		return 0;
+	}
+	return 0;
+}
+
+static void emit_save_all_regs(struct jit *jit, jit_op *op)
+{       
+	struct jit_reg_allocator * al = jit->reg_al;
+
+	common86_pushf(jit->ip);
+	for (int i = 0; i < al->gp_reg_cnt; i++) {
+		jit_hw_reg *reg = &al->gp_regs[i];
+		if (!reg->callee_saved && is_active_register(al, reg, op))
+			common86_push_reg(jit->ip, reg->id);
+	}
+
+	for (int i = 0; i < al->fp_reg_cnt; i++) {
+		jit_hw_reg *reg = &al->fp_regs[i];
+		if (!reg->callee_saved && is_active_register(al, reg, op))
+			common86_push_xmm_reg(jit->ip, reg->id);
+	}
+}
+
+static void emit_restore_all_regs(struct jit *jit, jit_op *op)
+{
+	struct jit_reg_allocator * al = jit->reg_al;
+
+	for (int i = al->fp_reg_cnt - 1; i >= 0; i--) {
+		jit_hw_reg *reg = &al->fp_regs[i];
+		if (!reg->callee_saved && is_active_register(al, reg, op))
+			common86_pop_xmm_reg(jit->ip, reg->id);
+	}
+
+	for (int i = al->gp_reg_cnt - 1; i >= 0; i--) {
+		jit_hw_reg *reg = &al->gp_regs[i];
+		if (!reg->callee_saved && is_active_register(al, reg, op))
+			common86_pop_reg(jit->ip, reg->id);
+	}
+	common86_popf(jit->ip);
+}
+
+
+
 
 /**
  * Emits LREG operation

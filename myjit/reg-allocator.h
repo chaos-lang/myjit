@@ -86,11 +86,11 @@ static void assign_regs_for_args(struct jit_reg_allocator * al, jit_op * op)
 	for (int i = 0; i < info->general_arg_cnt + info->float_arg_cnt; i++) {
 		int isfp_arg = (info->args[i].type == JIT_FLOAT_NUM);
 		if (!isfp_arg && (assoc_gp_regs < al->gp_arg_reg_cnt)) {
-			rmap_assoc(op->regmap, jit_mkreg(JIT_RTYPE_INT, JIT_RTYPE_ARG, i), al->gp_arg_regs[i]);
+			rmap_assoc(op->regmap, jit_mkreg(JIT_RTYPE_INT, JIT_RTYPE_ARG, i), al->gp_arg_regs[assoc_gp_regs]);
 			assoc_gp_regs++;
 		}
 		if (isfp_arg && (assoc_fp_regs < al->fp_arg_reg_cnt)) {
-			rmap_assoc(op->regmap, jit_mkreg(JIT_RTYPE_FLOAT, JIT_RTYPE_ARG, i), al->fp_arg_regs[i]);
+			rmap_assoc(op->regmap, jit_mkreg(JIT_RTYPE_FLOAT, JIT_RTYPE_ARG, i), al->fp_arg_regs[assoc_fp_regs]);
 			assoc_fp_regs++;
 		}
 	}

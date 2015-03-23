@@ -20,6 +20,7 @@ typedef void * (*ppfl)(jit_value);
 #define DUMP_ASSOC      0x10
 #define DUMP_LIVENESS   0x20
 #define DUMP_LOADS      0x40
+#define DUMP_TRACE      0x80
 #define OPT_LIST        0x100
 #define OPT_ALL         0x200
 
@@ -44,6 +45,10 @@ char *test_filename;
 #define JIT_GENERATE_CODE(p)  { \
 	jit_check_code(p, JIT_WARN_ALL); \
 	if (test_flags & DUMP_COMPILABLE) jit_dump_ops(p, JIT_DEBUG_COMPILABLE); \
+	if (test_flags & DUMP_TRACE) {\
+		if (test_flags & DUMP_COMBINED) jit_trace(p, JIT_DEBUG_COMBINED); \
+		else jit_trace(p, JIT_DEBUG_OPS); \
+	} \
 	jit_generate_code(p); \
 	if (test_flags & (DUMP_OPS | DUMP_ASSOC | DUMP_LIVENESS)) \
 		jit_dump_ops(p, JIT_DEBUG_OPS | \
@@ -121,6 +126,7 @@ int main(int argc, char **argv)
 		if (!strcmp("--assoc", argv[i])) options |= DUMP_ASSOC;
 		if (!strcmp("--loads", argv[i])) options |= DUMP_LOADS;
 		if (!strcmp("--liveness", argv[i])) options |= DUMP_LIVENESS;
+		if (!strcmp("--trace", argv[i])) options |= DUMP_TRACE;
 		if (!strcmp("-l", argv[i])) options |= OPT_LIST;
 		if (!strcmp("--all", argv[i])) options |= OPT_ALL;
 	}

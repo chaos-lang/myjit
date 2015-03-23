@@ -176,20 +176,22 @@ static void emit_prolog_op(struct jit * jit, jit_op * op)
 
 static void emit_msg_op(struct jit * jit, jit_op * op)
 {
-	x86_pushad(jit->ip);
+	emit_save_all_regs(jit, op);
+
 	if (!IS_IMM(op)) x86_push_reg(jit->ip, op->r_arg[1]);
 	x86_push_imm(jit->ip, op->r_arg[0]);
 	op->patch_addr = JIT_BUFFER_OFFSET(jit); 
 	x86_call_imm(jit->ip, printf);
 	if (IS_IMM(op)) x86_alu_reg_imm(jit->ip, X86_ADD, X86_ESP, 4);
 	else x86_alu_reg_imm(jit->ip, X86_ADD, X86_ESP, 8);
-	x86_popad(jit->ip);
+
+	emit_restore_all_regs(jit, op);
 }
 
 static void emit_trace_op(struct jit *jit, jit_op *op)
 {       
 	int trace = 0;
-	x86_pushad(jit->ip);
+	emit_save_all_regs(jit, op);
         
 	jit_opcode prev_code = GET_OP(op->prev);
 	jit_opcode next_code = GET_OP(op->next);
@@ -205,7 +207,7 @@ static void emit_trace_op(struct jit *jit, jit_op *op)
 	x86_call_imm(jit->ip, jit_trace_callback);
 	x86_alu_reg_imm(jit->ip, X86_ADD, X86_ESP, 16);
 
-	x86_popad(jit->ip);
+	emit_restore_all_regs(jit, op);
 }
 
 

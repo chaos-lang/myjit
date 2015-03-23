@@ -292,11 +292,7 @@ static void emit_prolog_op(struct jit * jit, jit_op * op)
 
 static void emit_msg_op(struct jit * jit, jit_op * op)
 {
-	struct jit_reg_allocator * al = jit->reg_al;
-
-	for (int i = 0; i < al->gp_reg_cnt; i++)
-		if (!al->gp_regs[i].callee_saved)
-			amd64_push_reg(jit->ip, al->gp_regs[i].id);
+	emit_save_all_regs(jit, op);
 
 	if (!IS_IMM(op)) amd64_mov_reg_reg_size(jit->ip, AMD64_RSI, op->r_arg[1], 8);
 	amd64_mov_reg_imm_size(jit->ip, AMD64_RDI, op->r_arg[0], 8);
@@ -304,17 +300,12 @@ static void emit_msg_op(struct jit * jit, jit_op * op)
 	amd64_mov_reg_imm(jit->ip, AMD64_RDX, printf);
 	amd64_call_reg(jit->ip, AMD64_RDX);
 
-	for (int i = al->gp_reg_cnt - 1; i >= 0; i--)
-		if (!al->gp_regs[i].callee_saved)
-			amd64_pop_reg(jit->ip, al->gp_regs[i].id);
+	emit_restore_all_regs(jit, op);
 }
 
 static void emit_trace_op(struct jit *jit, jit_op *op)
 {
-	struct jit_reg_allocator * al = jit->reg_al;
-	for (int i = 0; i < al->gp_reg_cnt; i++)
-		if (!al->gp_regs[i].callee_saved)
-			amd64_push_reg(jit->ip, al->gp_regs[i].id);
+	emit_save_all_regs(jit, op);
 
 	// stack alignment
 	amd64_push_reg(jit->ip, AMD64_RBX);
@@ -323,10 +314,10 @@ static void emit_trace_op(struct jit *jit, jit_op *op)
 	amd64_alu_reg_imm_size(jit->ip, X86_SUB, AMD64_RSP, 16, 8);
 
 	int trace = 0;
-        jit_opcode prev_code = GET_OP(op->prev);
-        jit_opcode next_code = GET_OP(op->next);
-        if ((prev_code == JIT_PROLOG) || (prev_code == JIT_LABEL) || (prev_code == JIT_PATCH)) trace |= TRACE_PREV;
-        if ((next_code != JIT_PROLOG) && (next_code != JIT_LABEL) && (next_code != JIT_PATCH)) trace |= TRACE_NEXT;
+	jit_opcode prev_code = GET_OP(op->prev);
+	jit_opcode next_code = GET_OP(op->next);
+	if ((prev_code == JIT_PROLOG) || (prev_code == JIT_LABEL) || (prev_code == JIT_PATCH)) trace |= TRACE_PREV;
+	if ((next_code != JIT_PROLOG) && (next_code != JIT_LABEL) && (next_code != JIT_PATCH)) trace |= TRACE_NEXT;
 
 	amd64_mov_reg_imm_size(jit->ip, AMD64_RDI, jit, 8);
 	amd64_mov_reg_imm_size(jit->ip, AMD64_RSI, op, 8);
@@ -339,9 +330,7 @@ static void emit_trace_op(struct jit *jit, jit_op *op)
 	amd64_mov_reg_reg_size(jit->ip, AMD64_RSP, AMD64_RBX, 8);
 	amd64_pop_reg(jit->ip, AMD64_RBX);
 
-	for (int i = al->gp_reg_cnt - 1; i >= 0; i--)
-		if (!al->gp_regs[i].callee_saved)
-			amd64_pop_reg(jit->ip, al->gp_regs[i].id);
+	emit_restore_all_regs(jit, op);
 }
 
 static void emit_fret_op(struct jit * jit, jit_op * op)

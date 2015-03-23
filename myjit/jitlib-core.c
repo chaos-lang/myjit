@@ -441,6 +441,10 @@ void jit_trace(struct jit *jit, int verbosity)
 {
 #ifdef JIT_ARCH_COMMON86
 	for (jit_op *op = jit_op_first(jit->ops)->next; op != NULL; op = op->next) {
+		if (GET_OP(op) == JIT_PROLOG) continue;
+		if (GET_OP(op) == JIT_DATA_BYTE) continue;
+		if (GET_OP(op) == JIT_DATA_REF_CODE) continue;
+		if (GET_OP(op) == JIT_DATA_REF_DATA) continue;
 		jit_op * o = jit_op_new(JIT_TRACE, SPEC(IMM, NO, NO), verbosity, 0, 0, 0);
 		o->r_arg[0] = o->arg[0];
 		jit_op_prepend(op, o);
@@ -472,7 +476,8 @@ static int is_cond_branch_op(jit_op *op)
 	|| (code == JIT_BGE) || (code == JIT_BEQ) ||  (code == JIT_BNE)
 	|| (code == JIT_FBLT) || (code == JIT_FBLE) || (code == JIT_FBGT)
 	|| (code == JIT_FBGE) || (code == JIT_FBEQ) ||  (code == JIT_FBNE)
-	|| (code == JIT_BOADD) || (code == JIT_BOSUB);
+	|| (code == JIT_BOADD) || (code == JIT_BOSUB) || (code == JIT_BNOADD)
+	|| (code == JIT_BNOSUB);
 }
 
 
