@@ -28,64 +28,77 @@ static inline void jit_flw_initialize(struct jit * jit)
 	}
 }
 
-static inline int flw_analyze_op(struct jit * jit, jit_op * op, struct jit_func_info * func_info)
+static inline void flw_analyze_prolog(struct jit * jit, jit_op * op, struct jit_func_info * func_info)
+{
+#if defined(JIT_ARCH_AMD64) 
+	for (int i = 0; i < func_info->general_arg_cnt + func_info->float_arg_cnt; i++) {
+		if (func_info->args[i].type == JIT_FLOAT_NUM) {
+			jit_set_remove(op->live_in, jit_mkreg(JIT_RTYPE_FLOAT, JIT_RTYPE_ARG, i)); 
+		} else {
+			jit_set_remove(op->live_in, jit_mkreg(JIT_RTYPE_INT, JIT_RTYPE_ARG, i)); 
+		}
+	}
+#endif
+
+
+#if defined(JIT_ARCH_SPARC)
+	int assoc_gp = 0;
+	int argcount = func_info->general_arg_cnt + func_info->float_arg_cnt;
+	for (int j = 0; j < argcount; j++) {
+		if (assoc_gp >= jit->reg_al->gp_arg_reg_cnt) break;
+		if (func_info->args[j].type != JIT_FLOAT_NUM) {
+			jit_set_remove(op->live_in, jit_mkreg(JIT_RTYPE_INT, JIT_RTYPE_ARG, j));	
+			assoc_gp++;
+		} else {
+			jit_set_remove(op->live_in, jit_mkreg(JIT_RTYPE_FLOAT, JIT_RTYPE_ARG, j));	
+			assoc_gp++;
+			if (func_info->args[j].size == sizeof(double)) {
+				jit_set_remove(op->live_in, jit_mkreg_ex(JIT_RTYPE_FLOAT, JIT_RTYPE_ARG, j));	
+				assoc_gp++;
+			}
+		}
+	}
+#endif
+}
+
+struct code_refs_cache {
+	int size;
+	jit_op **ops;
+};
+
+static inline void initialize_code_refs(struct code_refs_cache *code_refs, struct jit_func_info *func_info)
+{
+	jit_op *op = func_info->first_op->next;
+	code_refs->size = 0;
+	while (op && (GET_OP(op) != JIT_PROLOG)) {
+		if ((GET_OP(op) == JIT_REF_CODE) || (GET_OP(op) == JIT_DATA_REF_CODE))
+			code_refs->size++;
+		op = op->next;
+	}
+	code_refs->ops = JIT_MALLOC(sizeof(jit_op *) * code_refs->size);
+
+	op = func_info->first_op->next;
+	int i = 0;
+	while (op && (GET_OP(op) != JIT_PROLOG)) {
+		if ((GET_OP(op) == JIT_REF_CODE) || (GET_OP(op) == JIT_DATA_REF_CODE))
+			code_refs->ops[i++] = op;	
+		op = op->next;
+	}
+}
+
+
+static inline int flw_analyze_op(struct jit * jit, jit_op * op, struct jit_func_info * func_info, int changed, struct code_refs_cache *code_refs)
 {
 	int result;
-	jit_set * in1 = jit_set_clone(op->live_in);
-	jit_set * out1 = jit_set_clone(op->live_out);
+	jit_set *out1 = op->live_out;
+	jit_set *in1 = op->live_in;
 
-	jit_set_free(op->live_in);
 	op->live_in = jit_set_clone(op->live_out);
 
 	for (int i = 0; i < 3; i++)
 		if (ARG_TYPE(op, i + 1) == TREG) jit_set_remove(op->live_in, op->arg[i]);
 
-// FIXME: should be generic for all architectures
-// marks registers which are used to pass arguments
-#if defined(JIT_ARCH_AMD64) 
-	if (GET_OP(op) == JIT_PROLOG) {
-		func_info = (struct jit_func_info *)op->arg[1];
-
-		for (int i = 0; i < func_info->general_arg_cnt + func_info->float_arg_cnt; i++) {
-			if (func_info->args[i].type == JIT_FLOAT_NUM) {
-				jit_set_remove(op->live_in, jit_mkreg(JIT_RTYPE_FLOAT, JIT_RTYPE_ARG, i)); 
-			} else {
-				jit_set_remove(op->live_in, jit_mkreg(JIT_RTYPE_INT, JIT_RTYPE_ARG, i)); 
-			}
-		}
-/*
-		int argcount = MIN(func_info->general_arg_cnt, jit->reg_al->gp_arg_reg_cnt);
-		for (int j = 0; j < argcount; j++)
-			jit_set_remove(op->live_in, jit_mkreg(JIT_RTYPE_INT, JIT_RTYPE_ARG, j)); 
-
-		argcount = MIN(func_info->float_arg_cnt, jit->reg_al->fp_arg_reg_cnt);
-		for (int j = 0; j < argcount; j++)
-			jit_set_remove(op->live_in, jit_mkreg(JIT_RTYPE_FLOAT, JIT_RTYPE_ARG, j)); 
-*/
-	}
-#endif
-
-#if defined(JIT_ARCH_SPARC)
-	if (GET_OP(op) == JIT_PROLOG) {
-		func_info = (struct jit_func_info *)op->arg[1];
-		int assoc_gp = 0;
-		int argcount = func_info->general_arg_cnt + func_info->float_arg_cnt;
-		for (int j = 0; j < argcount; j++) {
-			if (assoc_gp >= jit->reg_al->gp_arg_reg_cnt) break;
-			if (func_info->args[j].type != JIT_FLOAT_NUM) {
-				jit_set_remove(op->live_in, jit_mkreg(JIT_RTYPE_INT, JIT_RTYPE_ARG, j));	
-				assoc_gp++;
-			} else {
-				jit_set_remove(op->live_in, jit_mkreg(JIT_RTYPE_FLOAT, JIT_RTYPE_ARG, j));	
-				assoc_gp++;
-				if (func_info->args[j].size == sizeof(double)) {
-					jit_set_remove(op->live_in, jit_mkreg_ex(JIT_RTYPE_FLOAT, JIT_RTYPE_ARG, j));	
-					assoc_gp++;
-				}
-			}
-		}
-	}
-#endif
+	if (GET_OP(op) == JIT_PROLOG) flw_analyze_prolog(jit, op, func_info);
 
 	for (int i = 0; i < 3; i++)
 		if (ARG_TYPE(op, i + 1) == REG)
@@ -104,7 +117,6 @@ static inline int flw_analyze_op(struct jit * jit, jit_op * op, struct jit_func_
 	}
 #endif
 
-	jit_set_free(op->live_out);
 
 	if ((GET_OP(op) == JIT_RET) || (GET_OP(op) == JIT_FRET)) {
 		op->live_out = jit_set_new(); 
@@ -117,14 +129,22 @@ static inline int flw_analyze_op(struct jit * jit, jit_op * op, struct jit_func_
 	}
 
 	if (op->code == (JIT_JMP | REG)) {
-		jit_op *xop = func_info->first_op->next;
 		op->live_out = jit_set_new();
+
+		if (code_refs->size < 0) initialize_code_refs(code_refs, func_info);
+		for (int i = 0; i < code_refs->size; i++) { 
+			jit_set_addall(op->live_out, code_refs->ops[i]->jmp_addr->live_in);
+		}
+
+/*
+		jit_op *xop = func_info->first_op->next;
 		while (xop && (GET_OP(xop) != JIT_PROLOG)) {
 			if ((GET_OP(xop) == JIT_REF_CODE) || (GET_OP(xop) == JIT_DATA_REF_CODE)) {
 				jit_set_addall(op->live_out, xop->jmp_addr->live_in);
 			}
 			xop = xop->next;
 		}
+*/
 		goto skip;
 	}
 
@@ -135,28 +155,54 @@ static inline int flw_analyze_op(struct jit * jit, jit_op * op, struct jit_func_
 		jit_set_addall(op->live_out, op->jmp_addr->live_in);
 skip:
 
-	result = !(jit_set_equal(in1, op->live_in) && jit_set_equal(out1, op->live_out));
+	// if something has changed, we have to do the analysis again anyway
+	if (changed) result = changed;
+	else result = !(jit_set_equal(in1, op->live_in) && jit_set_equal(out1, op->live_out));
 	jit_set_free(in1);
 	jit_set_free(out1);
 	return result;
 }
 
+static inline void analyze_function(struct jit *jit, jit_op *first_op, jit_op *last_op)
+{
+	int changed;
+	struct code_refs_cache code_refs = { -1, NULL };
+
+	struct jit_func_info * func_info = (struct jit_func_info *)first_op->arg[1];
+	int loop = 0;
+
+	do {
+		changed = 0;
+		jit_op * op = last_op;
+		while (1) {
+			changed |= flw_analyze_op(jit, op, func_info, changed, &code_refs);
+			if (op == first_op) break;
+			op = op->prev;
+		}
+	} while (changed);
+	if (code_refs.ops) JIT_FREE(code_refs.ops);
+
+}
+
 static inline void jit_flw_analysis(struct jit * jit)
 {
 	jit_flw_initialize(jit);
-	int changed;
-	struct jit_func_info * func_info = NULL;
-	do {
-		changed = 0;
-		jit_op * op = jit_op_first(jit->ops);
-		while (op) {
-			if (GET_OP(op) == JIT_PROLOG)
-				func_info = (struct jit_func_info *)op->arg[1];
+	jit_op *op = jit_op_first(jit->ops);
 
-			changed |= flw_analyze_op(jit, op, func_info);
-			op = op->next;
+	while (op) {
+		if (GET_OP(op) == JIT_PROLOG) {
+			jit_op *first = op;
+			while (1) {
+				if ((op->next == NULL) || (GET_OP(op->next) == JIT_PROLOG)) {
+					jit_op *second = op;
+					analyze_function(jit, first, second);
+					break;
+				}
+				op = op->next;
+			}
 		}
-	} while (changed);
+		op = op->next;
+	}
 }
 
 static inline void mark_livecode(jit_op *op)
