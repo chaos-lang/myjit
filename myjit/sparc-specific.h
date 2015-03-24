@@ -458,10 +458,10 @@ void emit_mul(struct jit * jit, jit_op * op)
 			sparc_neg(jit->ip, a1);
 			return;
 		}
-		if (IS_SIGNED(op) sparc_smul_imm(jit->ip, FALSE, a2, a3, a1);
+		if (IS_SIGNED(op)) sparc_smul_imm(jit->ip, FALSE, a2, a3, a1);
 		else sparc_umul_imm(jit->ip, FALSE, a2, a3, a1);
 	} else {
-		if (IS_SIGNED(op) sparc_smul(jit->ip, FALSE, a2, a3, a1);
+		if (IS_SIGNED(op)) sparc_smul(jit->ip, FALSE, a2, a3, a1);
 		else sparc_umul_imm(jit->ip, FALSE, a2, a3, a1); 
 	}
 }
@@ -604,7 +604,7 @@ void jit_gen_op(struct jit * jit, struct jit_op * op)
 		case JIT_MUL:  emit_mul(jit, op); break;
 
 		case JIT_HMUL: 
-			if (IS_SIGNED(op) {
+			if (IS_SIGNED(op)) {
 				if (IS_IMM(op)) sparc_smul_imm(jit->ip, FALSE, a2, a3, sparc_g0);
 				else sparc_smul(jit->ip, FALSE, a2, a3, sparc_g0);
 			} else {
@@ -616,7 +616,7 @@ void jit_gen_op(struct jit * jit, struct jit_op * op)
 			break;
 
 		case JIT_DIV: 
-			if (IS_SIGNED(op) {
+			if (IS_SIGNED(op)) {
 				if (IS_IMM(op)) {
 					switch (a3) {
 						case 2: sparc_sra_imm(jit->ip, a2, 1, a1); goto op_complete;
@@ -664,7 +664,7 @@ void jit_gen_op(struct jit * jit, struct jit_op * op)
 					case 32: sparc_and_imm(jit->ip, FALSE, a2, 0x1f, a1); goto op_complete;
 				}
 			}
-			if (IS_SIGNED(op) {
+			if (IS_SIGNED(op)) {
 				sparc_sra_imm(jit->ip, a2, 31, sparc_g1);
 				sparc_wry(jit->ip, sparc_g1, sparc_g0);
 			} else {
