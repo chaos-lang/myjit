@@ -281,9 +281,13 @@ static inline void jit_prepare_reg_counts(struct jit * jit)
 				if (GET_OP(op->next) == JIT_PUTARG) xop->arg[0]++;
 				else if (GET_OP(op->next) == JIT_FPUTARG) xop->arg[1]++;
 				else {
-					if (GET_OP(op->next) == JIT_CALL) break;
-					if ((GET_OP(op->next) != JIT_TRACE) && (GET_OP(op->next) != JIT_CODE_ALIGN)) {
-						printf("Garbage in the prepare-call block\n");
+					jit_opcode next_code = GET_OP(op->next);
+					if (next_code == JIT_CALL) break;
+					if ((next_code != JIT_TRACE) && (next_code != JIT_CODE_ALIGN)
+					&& (next_code != JIT_UREG) && (next_code != JIT_LREG)
+					&& (next_code != JIT_RENAMEREG) && (next_code != JIT_SYNCREG))
+					{
+						printf("Garbage in the prepare-call block. Opcode: %x\n", next_code >> 3);
 						abort();
 					}
 				}
