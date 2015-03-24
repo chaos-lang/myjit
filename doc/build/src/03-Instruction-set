@@ -48,45 +48,55 @@ Each binary arithmetic operation has exactly three operands. First two operands 
 
 ::
 
-	addr   reg, reg, reg      O1 := O2 + O3
-	addi   reg, reg, imm      O1 := O2 + O3
-	addxr  reg, reg, reg      O1 := O2 + (O3 + carry)
-	addxi  reg, reg, imm      O1 := O2 + (O3 + carry)
-	addcr  reg, reg, reg      O1 := O2 + O3, set carry
-	addci  reg, reg, imm      O1 := O2 + O3, set carry
+	addr    reg, reg, reg      O1 := O2 + O3
+	addi    reg, reg, imm      O1 := O2 + O3
+	addxr   reg, reg, reg      O1 := O2 + (O3 + carry)
+	addxi   reg, reg, imm      O1 := O2 + (O3 + carry)
+	addcr   reg, reg, reg      O1 := O2 + O3, set carry
+	addci   reg, reg, imm      O1 := O2 + O3, set carry
 
-	subr   reg, reg, reg      O1 := O2 - O3
-	subi   reg, reg, imm      O1 := O2 - O3
-	subxr  reg, reg, reg      O1 := O2 - (O3 + carry)
-	subxi  reg, reg, imm      O1 := O2 - (O3 + carry)
-	subcr  reg, reg, reg      O1 := O2 - O3, set carry
-	subci  reg, reg, imm      O1 := O2 - O3, set carry
-	rsbr   reg, reg, reg      O1 := O3 - O2
-	rsbi   reg, reg, imm      O1 := O3 - O2
+	subr    reg, reg, reg      O1 := O2 - O3
+	subi    reg, reg, imm      O1 := O2 - O3
+	subxr   reg, reg, reg      O1 := O2 - (O3 + carry)
+	subxi   reg, reg, imm      O1 := O2 - (O3 + carry)
+	subcr   reg, reg, reg      O1 := O2 - O3, set carry
+	subci   reg, reg, imm      O1 := O2 - O3, set carry
+	rsbr    reg, reg, reg      O1 := O3 - O2
+	rsbi    reg, reg, imm      O1 := O3 - O2
 
-	mulr   reg, reg, reg      O1 := O2 * O3
-	muli   reg, reg, imm      O1 := O2 * O3
-	hmulr  reg, reg, reg      O1 := high bits of O2 * O3
-	hmuli  reg, reg, imm      O1 := high bits of O2 * O3
+	mulr    reg, reg, reg      O1 := O2 * O3
+	muli    reg, reg, imm      O1 := O2 * O3
+	hmulr   reg, reg, reg      O1 := high bits of O2 * O3
+	hmuli   reg, reg, imm      O1 := high bits of O2 * O3
 
-	divr   reg, reg, reg      O1 := O2 / O3
-	divi   reg, reg, imm      O1 := O2 / O3
-	modr   reg, reg, reg      O1 := O2 % O3
-	modi   reg, reg, imm      O1 := O2 % O3
+	mulr_u  reg, reg, reg      O1 := O2 * O3
+	muli_u  reg, reg, imm      O1 := O2 * O3
+	hmulr_u reg, reg, reg      O1 := high bits of O2 * O3
+	hmuli_u reg, reg, imm      O1 := high bits of O2 * O3
 
-	andr   reg, reg, reg      O1 := O2 & O3
-	andi   reg, reg, imm      O1 := O2 & O3
-	orr    reg, reg, reg      O1 := O2 | O3
-	ori    reg, reg, imm      O1 := O2 | O3
-	xorr   reg, reg, reg      O1 := O2 ^ O3
-	xori   reg, reg, imm      O1 := O2 ^ O3
+	divr    reg, reg, reg      O1 := O2 / O3
+	divi    reg, reg, imm      O1 := O2 / O3
+	modr    reg, reg, reg      O1 := O2 % O3
+	modi    reg, reg, imm      O1 := O2 % O3
 
-	lshr   reg, reg, reg      O1 := O2 << O3
-	lshi   reg, reg, imm      O1 := O2 << O3
-	rshr   reg, reg, reg      O1 := O2 >> O3
-	rshi   reg, reg, imm      O1 := O2 >> O3
-	rshr_u reg, reg, reg      O1 := O2 >> O3  (unsigned variant)
-	rshi_u reg, reg, imm      O1 := O2 >> O3  (unsigned variant)
+	divr_u  reg, reg, reg      O1 := O2 / O3
+	divi_u  reg, reg, imm      O1 := O2 / O3
+	modr_u  reg, reg, reg      O1 := O2 % O3
+	modi_u  reg, reg, imm      O1 := O2 % O3
+
+	andr    reg, reg, reg      O1 := O2 & O3
+	andi    reg, reg, imm      O1 := O2 & O3
+	orr     reg, reg, reg      O1 := O2 | O3
+	ori     reg, reg, imm      O1 := O2 | O3
+	xorr    reg, reg, reg      O1 := O2 ^ O3
+	xori    reg, reg, imm      O1 := O2 ^ O3
+
+	lshr    reg, reg, reg      O1 := O2 << O3
+	lshi    reg, reg, imm      O1 := O2 << O3
+	rshr    reg, reg, reg      O1 := O2 >> O3
+	rshi    reg, reg, imm      O1 := O2 >> O3
+	rshr_u  reg, reg, reg      O1 := O2 >> O3  (unsigned variant)
+	rshi_u  reg, reg, imm      O1 := O2 >> O3  (unsigned variant)
 
 Operations ``subx`` and ``addx`` have to directly follow ``subc`` and ``addc`` otherwise the result is undefined. Note that you can use the ``unsigned`` flag with the ``rshr`` operation to propagate the first bit accordingly.
 

@@ -512,9 +512,9 @@ static void emit_mul_op(struct jit * jit, struct jit_op * op, int imm, int sign,
 /**
  * Emits operations for multiplications
  *
- * @param imm -- indicates whether the divisor is constant or not
- * @param sign -- if zero, it considers values to be unsigned
- * @param modulo -- returns modulo 
+ * @param imm -- indicates whether the divisor is a constant or not
+ * @param sign -- if zero, it considers values are considered as unsigned
+ * @param modulo -- returns modulo
  *
  * This implementation tries to optimize several cases,
  * and converts some types of multiplications into the bit shifts
@@ -558,7 +558,8 @@ static void emit_div_op(struct jit * jit, struct jit_op * op, int imm, int sign,
 
 	if (imm) {
 		if (dividend != COMMON86_AX) common86_mov_reg_reg(jit->ip, COMMON86_AX, dividend, REG_SIZE);
-		common86_cdq(jit->ip);
+		if (sign) common86_cdq(jit->ip);
+		else common86_alu_reg_reg(jit->ip, X86_XOR, COMMON86_DX, COMMON86_DX);
 		if (dest != COMMON86_BX) common86_push_reg(jit->ip, COMMON86_BX);
 		common86_mov_reg_imm_size(jit->ip, COMMON86_BX, divisor, REG_SIZE);
 		common86_div_reg(jit->ip, COMMON86_BX, sign);

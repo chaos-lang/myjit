@@ -408,7 +408,7 @@ void emit_optimized_multiplication(struct jit * jit, long a1, long a2, long a3)
 {
 	int bits = _bit_pop(a3);
 	unsigned long ar = (unsigned long)a3;
-	int in_tmp = 0; // 1 if there's something the temporary registers g1, g2
+	int in_tmp = 0; // 1 if there's something in the temporary registers g1, g2
 	for (int i = 0; i < 32; i++) {
 		if (ar & 0x1) {
 			bits--;
@@ -458,8 +458,12 @@ void emit_mul(struct jit * jit, jit_op * op)
 			sparc_neg(jit->ip, a1);
 			return;
 		}
-		sparc_smul_imm(jit->ip, FALSE, a2, a3, a1);
-	} else sparc_smul(jit->ip, FALSE, a2, a3, a1);
+		if (IS_SIGNED(op) sparc_smul_imm(jit->ip, FALSE, a2, a3, a1);
+		else sparc_umul_imm(jit->ip, FALSE, a2, a3, a1);
+	} else {
+		if (IS_SIGNED(op) sparc_smul(jit->ip, FALSE, a2, a3, a1);
+		else sparc_umul_imm(jit->ip, FALSE, a2, a3, a1); 
+	}
 }
 
 // common function for floor & ceil ops
@@ -600,30 +604,54 @@ void jit_gen_op(struct jit * jit, struct jit_op * op)
 		case JIT_MUL:  emit_mul(jit, op); break;
 
 		case JIT_HMUL: 
-			if (IS_IMM(op)) sparc_smul_imm(jit->ip, FALSE, a2, a3, sparc_g0);
-			else sparc_smul(jit->ip, FALSE, a2, a3, sparc_g0);
+			if (IS_SIGNED(op) {
+				if (IS_IMM(op)) sparc_smul_imm(jit->ip, FALSE, a2, a3, sparc_g0);
+				else sparc_smul(jit->ip, FALSE, a2, a3, sparc_g0);
+			} else {
+				if (IS_IMM(op)) sparc_umul_imm(jit->ip, FALSE, a2, a3, sparc_g0);
+				else sparc_umul(jit->ip, FALSE, a2, a3, sparc_g0);
+			}
 			sparc_nop(jit->ip);
 			sparc_rdy(jit->ip, a1);
 			break;
 
 		case JIT_DIV: 
-			if (IS_IMM(op)) {
-				switch (a3) {
-					case 2: sparc_sra_imm(jit->ip, a2, 1, a1); goto op_complete;
-					case 4: sparc_sra_imm(jit->ip, a2, 2, a1); goto op_complete;
-					case 8: sparc_sra_imm(jit->ip, a2, 3, a1); goto op_complete;
-					case 16: sparc_sra_imm(jit->ip, a2, 4, a1); goto op_complete;
-					case 32: sparc_sra_imm(jit->ip, a2, 5, a1); goto op_complete;
-				}
-			} 
-			sparc_sra_imm(jit->ip, a2, 31, sparc_g1);
-			sparc_wry(jit->ip, sparc_g1, sparc_g0);
-			sparc_nop(jit->ip);
-			sparc_nop(jit->ip);
-			sparc_nop(jit->ip);
+			if (IS_SIGNED(op) {
+				if (IS_IMM(op)) {
+					switch (a3) {
+						case 2: sparc_sra_imm(jit->ip, a2, 1, a1); goto op_complete;
+						case 4: sparc_sra_imm(jit->ip, a2, 2, a1); goto op_complete;
+						case 8: sparc_sra_imm(jit->ip, a2, 3, a1); goto op_complete;
+						case 16: sparc_sra_imm(jit->ip, a2, 4, a1); goto op_complete;
+						case 32: sparc_sra_imm(jit->ip, a2, 5, a1); goto op_complete;
+					}
+				} 
+				sparc_sra_imm(jit->ip, a2, 31, sparc_g1);
+				sparc_wry(jit->ip, sparc_g1, sparc_g0);
+				sparc_nop(jit->ip);
+				sparc_nop(jit->ip);
+				sparc_nop(jit->ip);
 
-			if (IS_IMM(op)) sparc_sdiv_imm(jit->ip, FALSE, a2, a3, a1);
-			else sparc_sdiv(jit->ip, FALSE, a2, a3, a1);
+				if (IS_IMM(op)) sparc_sdiv_imm(jit->ip, FALSE, a2, a3, a1);
+				else sparc_sdiv(jit->ip, FALSE, a2, a3, a1);
+			} else { // UNSIGNED
+				if (IS_IMM(op)) {
+					switch (a3) {
+						case 2: sparc_srl(jit->ip, a2, 1, a1); goto op_complete;
+						case 4: sparc_srl_imm(jit->ip, a2, 2, a1); goto op_complete;
+						case 8: sparc_srl_imm(jit->ip, a2, 3, a1); goto op_complete;
+						case 16: sparc_srl_imm(jit->ip, a2, 4, a1); goto op_complete;
+						case 32: sparc_srl_imm(jit->ip, a2, 5, a1); goto op_complete;
+					}
+				} 
+				sparc_wry(jit->ip, sparc_g0, sparc_g0);
+				sparc_nop(jit->ip);
+				sparc_nop(jit->ip);
+				sparc_nop(jit->ip);
+
+				if (IS_IMM(op)) sparc_udiv_imm(jit->ip, FALSE, a2, a3, a1);
+				else sparc_udiv(jit->ip, FALSE, a2, a3, a1);
+			}
 			break;
 
 		case JIT_MOD: 
@@ -636,17 +664,32 @@ void jit_gen_op(struct jit * jit, struct jit_op * op)
 					case 32: sparc_and_imm(jit->ip, FALSE, a2, 0x1f, a1); goto op_complete;
 				}
 			}
-			sparc_sra_imm(jit->ip, a2, 31, sparc_g1);
-			sparc_wry(jit->ip, sparc_g1, sparc_g0);
-			sparc_nop(jit->ip);
-			sparc_nop(jit->ip);
-			sparc_nop(jit->ip);
-			if (IS_IMM(op)) {
-				sparc_sdiv_imm(jit->ip, FALSE, a2, a3, sparc_g1);
-				sparc_smul_imm(jit->ip, FALSE, sparc_g1, a3, sparc_g1);
+			if (IS_SIGNED(op) {
+				sparc_sra_imm(jit->ip, a2, 31, sparc_g1);
+				sparc_wry(jit->ip, sparc_g1, sparc_g0);
 			} else {
-				sparc_sdiv(jit->ip, FALSE, a2, a3, sparc_g1);
-				sparc_smul(jit->ip, FALSE, sparc_g1, a3, sparc_g1);
+				sparc_wry(jit->ip, sparc_g0, sparc_g0);
+			}
+			sparc_nop(jit->ip);
+			sparc_nop(jit->ip);
+			sparc_nop(jit->ip);
+			if (IS_SIGNED(op)) {
+				if (IS_IMM(op)) {
+					sparc_sdiv_imm(jit->ip, FALSE, a2, a3, sparc_g1);
+					sparc_smul_imm(jit->ip, FALSE, sparc_g1, a3, sparc_g1);
+				} else {
+					sparc_sdiv(jit->ip, FALSE, a2, a3, sparc_g1);
+					sparc_smul(jit->ip, FALSE, sparc_g1, a3, sparc_g1);
+				}
+			} else {
+				if (IS_IMM(op)) {
+					sparc_udiv_imm(jit->ip, FALSE, a2, a3, sparc_g1);
+					sparc_umul_imm(jit->ip, FALSE, sparc_g1, a3, sparc_g1);
+				} else {
+					sparc_udiv(jit->ip, FALSE, a2, a3, sparc_g1);
+					sparc_umul(jit->ip, FALSE, sparc_g1, a3, sparc_g1);
+				}
+
 			}
 			sparc_sub(jit->ip, FALSE, a2, sparc_g1, a1);
 			break;
