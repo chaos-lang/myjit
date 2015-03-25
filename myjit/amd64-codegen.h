@@ -459,7 +459,7 @@ typedef union {
 			case 2: *(inst)++ = (unsigned char)0xbf; break; \
 			default: assert(0);\
 		}\
-		x86_membase_emit ((inst), (reg), (basereg), (disp));    \
+		x86_membase_emit ((inst), (reg)&0x7, (basereg)&0x7, (disp));    \
 	} while (0)
 
 #define amd64_movsxd_reg_mem(inst,reg,mem) \
@@ -528,7 +528,7 @@ do {     \
 	do { \
 		amd64_emit_rex ((inst),8,(reg),(indexreg),(basereg));\
 		*(inst)++ = (unsigned char)0x63; \
-		x86_memindex_emit ((inst), (reg), (basereg), (disp), (indexreg), (shift));      \
+		x86_memindex_emit ((inst), (reg)&0x7, (basereg)&0x7, (disp), (indexreg)&0x7, (shift));      \
 	} while (0)
 
 #define amd64_movsxd_reg_membase(inst,reg,basereg,disp) \
@@ -542,7 +542,7 @@ do {     \
     do {     \
        amd64_emit_rex(inst,8,(dreg),0,(reg)); \
        *(inst)++ = (unsigned char)0x63; \
-	   x86_reg_emit ((inst), (dreg), (reg));	\
+	   x86_reg_emit ((inst), (dreg)&0x7, (reg)&0x7);	\
     } while (0)
 
 /* Pretty much the only instruction that supports a 64-bit immediate. Optimize for common case of
