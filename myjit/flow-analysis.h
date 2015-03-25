@@ -20,10 +20,33 @@
 #include "set.h"
 static inline void jit_flw_initialize(struct jit * jit)
 {
+	struct jit_func_info *func_info;
 	jit_op * op = jit_op_first(jit->ops);
 	while (op) {
 		op->live_in = jit_set_new();
 		op->live_out = jit_set_new();
+
+		for (int i = 0; i < 3; i++)
+			if (ARG_TYPE(op, i + 1) == REG)
+				jit_set_add(op->live_in, op->arg[i]);
+
+		if (GET_OP(op) == JIT_PROLOG) {
+			func_info = (struct jit_func_info *)op->arg[1];
+		}
+
+#if defined(JIT_ARCH_AMD64) || defined(JIT_ARCH_SPARC)
+		if (GET_OP(op) == JIT_GETARG) {
+			int arg_id = op->arg[1];
+			if (func_info->args[arg_id].type != JIT_FLOAT_NUM) {
+				jit_set_add(op->live_in, jit_mkreg(JIT_RTYPE_INT, JIT_RTYPE_ARG, arg_id)); 
+			} else {
+				jit_set_add(op->live_in, jit_mkreg(JIT_RTYPE_FLOAT, JIT_RTYPE_ARG, arg_id));
+				if (func_info->args[arg_id].overflow)
+					jit_set_add(op->live_in, jit_mkreg_ex(JIT_RTYPE_FLOAT, JIT_RTYPE_ARG, arg_id)); 
+			}
+		}
+#endif
+
 		op = op->next;
 	}
 }
@@ -86,8 +109,8 @@ static inline void initialize_code_refs(struct code_refs_cache *code_refs, struc
 	}
 }
 
-
-static inline int flw_analyze_op(struct jit * jit, jit_op * op, struct jit_func_info * func_info, int changed, struct code_refs_cache *code_refs)
+/*
+static inline int old_flw_analyze_op(struct jit * jit, jit_op * op, struct jit_func_info * func_info, int changed, struct code_refs_cache *code_refs)
 {
 	int result;
 	jit_set *out1 = op->live_out;
@@ -136,15 +159,6 @@ static inline int flw_analyze_op(struct jit * jit, jit_op * op, struct jit_func_
 			jit_set_addall(op->live_out, code_refs->ops[i]->jmp_addr->live_in);
 		}
 
-/*
-		jit_op *xop = func_info->first_op->next;
-		while (xop && (GET_OP(xop) != JIT_PROLOG)) {
-			if ((GET_OP(xop) == JIT_REF_CODE) || (GET_OP(xop) == JIT_DATA_REF_CODE)) {
-				jit_set_addall(op->live_out, xop->jmp_addr->live_in);
-			}
-			xop = xop->next;
-		}
-*/
 		goto skip;
 	}
 
@@ -162,6 +176,50 @@ skip:
 	jit_set_free(out1);
 	return result;
 }
+*/
+
+static inline int flw_analyze_op(struct jit * jit, jit_op * op, struct jit_func_info * func_info, int changed, struct code_refs_cache *code_refs)
+{
+	int result = 0;
+	int live_out_size = jit_set_size(op->live_out);
+	int live_in_size = jit_set_size(op->live_in);
+
+	
+	if (op->jmp_addr && (GET_OP(op) != JIT_REF_CODE) && (GET_OP(op) != JIT_DATA_REF_CODE))
+		jit_set_addall(op->live_out, op->jmp_addr->live_in);
+
+	if (op->code == (JIT_JMP | REG)) {
+
+		if (code_refs->size < 0) initialize_code_refs(code_refs, func_info);
+		for (int i = 0; i < code_refs->size; i++) { 
+			jit_set_addall(op->live_out, code_refs->ops[i]->jmp_addr->live_in);
+		}
+
+		goto skip;
+	}
+	
+	if (op->code == (JIT_JMP | IMM)) goto skip;
+
+	if (op->next) jit_set_addall(op->live_out, op->next->live_in);
+
+
+skip:
+	jit_set_addall(op->live_in, op->live_out);
+
+	for (int i = 0; i < 3; i++)
+		if (ARG_TYPE(op, i + 1) == TREG) jit_set_remove(op->live_in, op->arg[i]);
+
+	for (int i = 0; i < 3; i++)
+		if (ARG_TYPE(op, i + 1) == REG) jit_set_add(op->live_in, op->arg[i]);
+
+	if (GET_OP(op) == JIT_PROLOG) flw_analyze_prolog(jit, op, func_info);
+
+	if (changed) return changed;
+	if (live_out_size != jit_set_size(op->live_out)) return 1;
+	if (live_in_size != jit_set_size(op->live_in)) return 1;
+	 
+	return 0;
+}
 
 static inline void analyze_function(struct jit *jit, jit_op *first_op, jit_op *last_op)
 {
@@ -169,7 +227,6 @@ static inline void analyze_function(struct jit *jit, jit_op *first_op, jit_op *l
 	struct code_refs_cache code_refs = { -1, NULL };
 
 	struct jit_func_info * func_info = (struct jit_func_info *)first_op->arg[1];
-	int loop = 0;
 
 	do {
 		changed = 0;

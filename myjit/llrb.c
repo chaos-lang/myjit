@@ -272,4 +272,10 @@ static int jit_tree_equal(jit_tree * r1, jit_tree * r2)
 	return jit_tree_subset(r1, r2) && jit_tree_subset(r2, r1);
 }
 
+static int jit_tree_size(jit_tree *h)
+{
+	if (h == NULL) return 0;
+	return jit_tree_size(h->left) + jit_tree_size(h->right) + 1;
+}
+
 #endif

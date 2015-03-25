@@ -68,4 +68,9 @@ static inline int jit_set_equal(jit_set * s1, jit_set * s2)
 {
 	return jit_tree_equal(s1->root, s2->root);
 }
+
+static inline int jit_set_size(jit_set *s)
+{
+	return jit_tree_size(s->root);
+}
 #endif

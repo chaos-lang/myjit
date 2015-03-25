@@ -6,10 +6,10 @@ fp: t101 t102 t103 t104 t105 t107 t108 t109
 
 optim: t301 t302
 
-misc: t200 t201 t202 t301 t401
+misc: t200 t201 t202 t301 t401 t501
 
 
-CFLAGS = -g -std=c99 -Wall -pedantic -D_XOPEN_SOURCE=600
+CFLAGS = -g -std=c99 -Wall -pedantic -D_XOPEN_SOURCE=600 -O0
 
 t001: t001-basics.c jitlib-core.o tests.h
 	$(CC) $(CFLAGS) -o t001 t001-basics.c jitlib-core.o
@@ -87,6 +87,9 @@ t302: t302-optim-stores.c jitlib-core.o tests.h
 t401: t401-data-in-code.c jitlib-core.o tests.h
 	$(CC) $(CFLAGS) -o t401 t401-data-in-code.c jitlib-core.o
 
+t501: t501-flow-analysis-stress-test.c jitlib-core.o tests.h
+	$(CC) $(CFLAGS) -o t501 t501-flow-analysis-stress-test.c jitlib-core.o
+
 
 jitlib-core.o: ../myjit/jitlib.h ../myjit/jitlib-core.h ../myjit/jitlib-core.c ../myjit/jitlib-debug.c ../myjit/x86-codegen.h ../myjit/x86-specific.h ../myjit/reg-allocator.h ../myjit/flow-analysis.h ../myjit/set.h ../myjit/amd64-specific.h ../myjit/amd64-codegen.h ../myjit/llrb.c ../myjit/reg-allocator.h ../myjit/rmap.h 
 	        $(CC) -c $(CFLAGS) ../myjit/jitlib-core.c
@@ -122,6 +125,7 @@ clean:
 	rm -f t301
 	rm -f t302
 	rm -f t401
+	rm -f t501
 
 coverage: CFLAGS+=--coverage
 coverage: clean coverage-run gen-coverage
