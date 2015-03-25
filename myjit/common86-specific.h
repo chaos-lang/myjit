@@ -571,7 +571,8 @@ static void emit_div_op(struct jit * jit, struct jit_op * op, int imm, int sign,
 
 		if (dividend != COMMON86_AX) common86_mov_reg_reg(jit->ip, COMMON86_AX, dividend, REG_SIZE);
 
-		common86_cdq(jit->ip);
+		if (sign) common86_cdq(jit->ip);
+		else common86_alu_reg_reg(jit->ip, X86_XOR, COMMON86_DX, COMMON86_DX);
 
 		if ((divisor == COMMON86_AX) || (divisor == COMMON86_DX)) {
 			common86_div_membase(jit->ip, COMMON86_SP, 0, sign);
