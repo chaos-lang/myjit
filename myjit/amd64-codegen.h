@@ -343,7 +343,7 @@ typedef union {
 			default: assert (0);    \
 		}       \
 		/*x86_mem_emit ((inst), (reg), (mem));  */  \
-		x86_address_byte ((inst), 0, (reg), 4); \
+		x86_address_byte ((inst), 0, (reg)&0x7, 4); \
 		x86_address_byte ((inst), 0, 4, 5); \
 		x86_imm_emit32 ((inst), (mem)); \
 	} while (0)
@@ -388,7 +388,7 @@ typedef union {
 			case 2: *(inst)++ = (unsigned char)0xb7; break; \
 			default: assert(0);\
 		}\
-		x86_membase_emit ((inst), (reg), (basereg), (disp));    \
+		x86_membase_emit ((inst), (reg)&0x7, (basereg)&0x7, (disp));    \
 	} while (0)
 
 /////////////////////////////////////////////////////////////////////////////////////////////////
