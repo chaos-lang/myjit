@@ -180,10 +180,8 @@ skip:
 
 static inline int flw_analyze_op(struct jit * jit, jit_op * op, struct jit_func_info * func_info, int changed, struct code_refs_cache *code_refs)
 {
-	int result = 0;
 	int live_out_size = jit_set_size(op->live_out);
 	int live_in_size = jit_set_size(op->live_in);
-
 	
 	if (op->jmp_addr && (GET_OP(op) != JIT_REF_CODE) && (GET_OP(op) != JIT_DATA_REF_CODE))
 		jit_set_addall(op->live_out, op->jmp_addr->live_in);

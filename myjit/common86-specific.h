@@ -178,6 +178,7 @@ static int emit_pop_caller_saved_regs(struct jit * jit, jit_op * op)
 
 static int is_active_register(struct jit_reg_allocator *al, jit_hw_reg *reg, jit_op *op)
 {       
+	if (op->next == NULL) return 0;
 	if ((GET_OP(op->next) == JIT_PUTARG) || (GET_OP(op->next) == JIT_FPUTARG) || (GET_OP(op->next) == JIT_CALL)) return 1;
 	if ((GET_OP(op->next) == JIT_RETVAL) && (reg == al->ret_reg)) return 1;
 	//if ((GET_OP(op->next) == JIT_FRETVAL) && (reg == al->fpret_reg)) return 1;
