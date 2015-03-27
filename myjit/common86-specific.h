@@ -197,11 +197,34 @@ static int is_active_register(struct jit_reg_allocator *al, jit_hw_reg *reg, jit
 	return 0;
 }
 
+static int required_stack_space_for_regs(struct jit *jit, jit_op *op)
+{
+
+	struct jit_reg_allocator * al = jit->reg_al;
+
+	int space = REG_SIZE; // flag register
+	if (!jit_current_func_info(jit)->has_prolog) space += REG_SIZE;
+
+	for (int i = 0; i < al->gp_reg_cnt; i++) {
+		jit_hw_reg *reg = &al->gp_regs[i];
+		if (!reg->callee_saved && is_active_register(al, reg, op))
+			space += REG_SIZE;
+	}
+
+	for (int i = 0; i < al->fp_reg_cnt; i++) {
+		jit_hw_reg *reg = &al->fp_regs[i];
+		if (!reg->callee_saved && is_active_register(al, reg, op))
+			space += sizeof(double) * 2;
+	}
+	return space;
+}
+
 static void emit_save_all_regs(struct jit *jit, jit_op *op)
 {       
 	struct jit_reg_allocator * al = jit->reg_al;
 
 	common86_pushf(jit->ip);
+
 	for (int i = 0; i < al->gp_reg_cnt; i++) {
 		jit_hw_reg *reg = &al->gp_regs[i];
 		if (!reg->callee_saved && is_active_register(al, reg, op))
@@ -210,13 +233,19 @@ static void emit_save_all_regs(struct jit *jit, jit_op *op)
 
 	for (int i = 0; i < al->fp_reg_cnt; i++) {
 		jit_hw_reg *reg = &al->fp_regs[i];
-		if (!reg->callee_saved && is_active_register(al, reg, op))
+		if (!reg->callee_saved && is_active_register(al, reg, op)) 
 			common86_push_xmm_reg(jit->ip, reg->id);
 	}
+	
+	int alignment = required_stack_space_for_regs(jit, op) % 16; 
+	if (alignment != 0) common86_alu_reg_imm(jit->ip, X86_SUB, COMMON86_SP, 16 - alignment);
 }
 
 static void emit_restore_all_regs(struct jit *jit, jit_op *op)
 {
+	int alignment = required_stack_space_for_regs(jit, op) % 16; 
+	if (alignment != 0) common86_alu_reg_imm(jit->ip, X86_ADD, COMMON86_SP, 16 - alignment);
+
 	struct jit_reg_allocator * al = jit->reg_al;
 
 	for (int i = al->fp_reg_cnt - 1; i >= 0; i--) {
