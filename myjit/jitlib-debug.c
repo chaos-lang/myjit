@@ -261,13 +261,13 @@ void jit_get_reg_name(struct jit_disasm *disasm, char * r, int reg)
 	else if (reg == R_IMM) strcpy(r, disasm->reg_imm_template);
 	else if (reg == FR_IMM) strcpy(r, disasm->reg_fimm_template);
 	else {
-		if (JIT_REG(reg).spec == JIT_RTYPE_REG) {
-			if (JIT_REG(reg).type == JIT_RTYPE_INT) sprintf(r, disasm->reg_template, JIT_REG(reg).id);
-			else sprintf(r, disasm->freg_template, JIT_REG(reg).id);
+		if (JIT_REG_SPEC(reg) == JIT_RTYPE_REG) {
+			if (JIT_REG_TYPE(reg) == JIT_RTYPE_INT) sprintf(r, disasm->reg_template, JIT_REG_ID(reg));
+			else sprintf(r, disasm->freg_template, JIT_REG_ID(reg));
 		}
-		else if (JIT_REG(reg).spec == JIT_RTYPE_ARG) {
-			if (JIT_REG(reg).type == JIT_RTYPE_INT) sprintf(r, disasm->arg_template, JIT_REG(reg).id);
-			else sprintf(r, disasm->farg_template, JIT_REG(reg).id);
+		else if (JIT_REG_SPEC(reg) == JIT_RTYPE_ARG) {
+			if (JIT_REG_TYPE(reg) == JIT_RTYPE_INT) sprintf(r, disasm->arg_template, JIT_REG_ID(reg));
+			else sprintf(r, disasm->farg_template, JIT_REG_ID(reg));
 		} else sprintf(r, "%s", disasm->reg_unknown_template);
 	} 
 }

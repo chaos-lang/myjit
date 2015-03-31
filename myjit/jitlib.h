@@ -84,62 +84,19 @@ typedef struct jit_label {
         struct jit_label * next;
 } jit_label;
 
-typedef struct {
-        unsigned type: 1; // INT / FP
-        unsigned spec: 2; // register, alias, immediate, argument's shadow space
-        unsigned part: 1; // allows to split one virtual register into two hw. registers (implicitly 0)
-        unsigned id: 28;
-#ifndef JIT_ARCH_AMD64
-#else
-        unsigned reserved: 32; 
-#endif
-} jit_reg;
+typedef jit_value jit_reg;
 
+// _type: INT/FP (1 bit)
+// _spec: register, alias, immediate, argument's shadow space (2 bits)
+// _part: allows to split one virtual register into two hw. registers (implicitly 0) (1 bit)
+// _id: (28 bits)
+#define jit_mkreg(_type, _spec, _id) (((_type) & 0x01) | (((_spec) & 0x03) << 1) | ((_id) & 0xfffffff) << 4)
+#define jit_mkreg_ex(_type, _spec, _id) (((_type) & 0x01) | (((_spec) & 0x03) << 1) | (1 << 3) | ((_id) & 0xfffffff) << 4)
 
-/*
- * internal auxiliary functions 
- */
-
-// FIXME: replace memcpy with union 
-static inline jit_value JIT_REG_TO_JIT_VALUE(jit_reg r)
-{
-        jit_value v;
-        memcpy(&v, &r, sizeof(jit_reg));
-        return v;
-}
-
-static inline jit_reg JIT_REG(jit_value v)
-{
-        jit_reg r;
-        memcpy(&r, &v, sizeof(jit_value));
-        return r;
-}
-
-static inline jit_value jit_mkreg(int type, int spec, int id)
-{
-	jit_reg r;
-	r.type = type;
-	r.spec = spec;
-	r.id = id;
-	r.part = 0;
-#ifdef JIT_ARCH_AMD64
-	r.reserved = 0;
-#endif
-	return JIT_REG_TO_JIT_VALUE(r);
-}
-
-static inline jit_value jit_mkreg_ex(int type, int spec, int id)
-{
-	jit_reg r;
-	r.type = type;
-	r.spec = spec;
-	r.id = id;
-	r.part = 1;
-#ifdef JIT_ARCH_AMD64
-	r.reserved = 0;
-#endif
-	return JIT_REG_TO_JIT_VALUE(r);
-}
+#define JIT_REG_TYPE(_r) ((_r) & 0x01)
+#define JIT_REG_SPEC(_r) (((_r) >> 1) & 0x03)
+#define JIT_REG_ID(_r) (((_r) >> 4) & 0xfffffff)
+#define JIT_REG_PART(_r) (((_r) >> 3) & 0x01)
 
 
 /*

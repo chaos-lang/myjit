@@ -30,15 +30,15 @@ inline jit_hw_reg * rmap_get(jit_rmap * rmap, jit_value reg);
 static inline int GET_REG_POS(struct jit * jit, int r)
 {
 	struct jit_func_info * info = jit_current_func_info(jit);
-	if (JIT_REG(r).spec == JIT_RTYPE_REG) {
-		if (JIT_REG(r).type == JIT_RTYPE_INT) {
-			return - (info->allocai_mem + EXTRA_SPACE + JIT_REG(r).id * REG_SIZE + REG_SIZE);
+	if (JIT_REG_SPEC(r) == JIT_RTYPE_REG) {
+		if (JIT_REG_TYPE(r) == JIT_RTYPE_INT) {
+			return - (info->allocai_mem + EXTRA_SPACE + JIT_REG_ID(r) * REG_SIZE + REG_SIZE);
 		} else {
-			return - (info->allocai_mem + EXTRA_SPACE + info->gp_reg_count * REG_SIZE + JIT_REG(r).id * sizeof(double) + sizeof(double));
+			return - (info->allocai_mem + EXTRA_SPACE + info->gp_reg_count * REG_SIZE + JIT_REG_ID(r) * sizeof(double) + sizeof(double));
 		}
 	}
-	if (JIT_REG(r).spec == JIT_RTYPE_ARG) {
-		int arg_id = JIT_REG(r).id;
+	if (JIT_REG_SPECT(r) == JIT_RTYPE_ARG) {
+		int arg_id = JIT_REG_ID(r);
 		struct jit_inp_arg * a = &(jit_current_func_info(jit)->args[arg_id]);
 		return a->spill_pos;
 	}
@@ -535,16 +535,16 @@ static void emit_sparc_floor(struct jit * jit, long a1, long a2, int floor)
 
 static inline void emit_ureg(struct jit * jit, long vreg, long hreg_id)
 {
-	if (JIT_REG(vreg).spec == JIT_RTYPE_ARG) {
-		if (JIT_REG(vreg).type == JIT_RTYPE_INT) sparc_st_imm(jit->ip, hreg_id, sparc_fp, GET_REG_POS(jit, vreg));
+	if (JIT_REG_SPEC(vreg) == JIT_RTYPE_ARG) {
+		if (JIT_REG_TYPE(vreg) == JIT_RTYPE_INT) sparc_st_imm(jit->ip, hreg_id, sparc_fp, GET_REG_POS(jit, vreg));
 		else {
-			int arg_id = JIT_REG(vreg).id;
+			int arg_id = JIT_REG_ID(vreg);
 			struct jit_inp_arg * a = &(jit_current_func_info(jit)->args[arg_id]);
 			if (a->passed_by_reg) sparc_st_imm(jit->ip, hreg_id, sparc_fp, a->spill_pos);
 		} 
 	}
-	if (JIT_REG(vreg).spec == JIT_RTYPE_REG) {
-		if (JIT_REG(vreg).type != JIT_RTYPE_FLOAT)
+	if (JIT_REG_SPEC(vreg)== JIT_RTYPE_REG) {
+		if (JIT_REG_TYPE(vreg)!= JIT_RTYPE_FLOAT)
 			sparc_st_imm(jit->ip, hreg_id, sparc_fp, GET_REG_POS(jit, vreg));
 		else sparc_stdf_imm(jit->ip, hreg_id, sparc_fp, GET_REG_POS(jit, vreg));
 	}
@@ -1041,8 +1041,8 @@ op_complete:
 		case (JIT_UREG): emit_ureg(jit, a1, a2); break;
 		case (JIT_SYNCREG): emit_ureg(jit, a1, a2); break;
 		case (JIT_LREG): 
-			if (JIT_REG(a2).spec == JIT_RTYPE_ARG) assert(0);
-			if (JIT_REG(a2).type == JIT_RTYPE_INT)
+			if (JIT_REG_SPEC(a2) == JIT_RTYPE_ARG) assert(0);
+			if (JIT_REG_TYPE(a2) == JIT_RTYPE_INT)
 				sparc_ld_imm(jit->ip, sparc_fp, GET_REG_POS(jit, a2), a1);
 			else sparc_lddf_imm(jit->ip, sparc_fp, GET_REG_POS(jit, a2), a1);
 			break;

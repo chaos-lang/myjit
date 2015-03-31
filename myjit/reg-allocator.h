@@ -397,8 +397,8 @@ static void assign_regs(struct jit * jit, struct jit_op * op)
 	// associates virtual registers with their hardware counterparts
 	for (i = 0; i < 3; i++) {
 		if ((ARG_TYPE(op, i + 1) == REG) || (ARG_TYPE(op, i + 1) == TREG)) {
-			jit_reg virt_reg = JIT_REG(op->arg[i]);
-			if (virt_reg.spec == JIT_RTYPE_ALIAS) associate_register_alias(al, op, i);
+			jit_reg virt_reg = (jit_reg) op->arg[i];
+			if (JIT_REG_SPEC(virt_reg) == JIT_RTYPE_ALIAS) associate_register_alias(al, op, i);
 			else associate_register(al, op, i);
 		} else if (ARG_TYPE(op, i + 1) == IMM) {
 			// assigns immediate values

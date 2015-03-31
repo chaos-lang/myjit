@@ -264,9 +264,9 @@ static inline void jit_prepare_reg_counts(struct jit * jit)
 	
 		for (int i = 0; i < 3; i++)
 			if ((ARG_TYPE(op, i + 1) == TREG) || (ARG_TYPE(op, i + 1) == REG)) {
-				jit_reg r = JIT_REG(op->arg[i]);
-				if ((r.type == JIT_RTYPE_INT) && (r.id > last_gp)) last_gp = r.id;
-				if ((r.type == JIT_RTYPE_FLOAT) && (r.id > last_fp)) last_fp = r.id;
+				jit_reg r = (jit_reg) op->arg[i];
+				if ((JIT_REG_TYPE(r) == JIT_RTYPE_INT) && (JIT_REG_ID(r) > last_gp)) last_gp = JIT_REG_ID(r);
+				if ((JIT_REG_TYPE(r) == JIT_RTYPE_FLOAT) && (JIT_REG_ID(r) > last_fp)) last_fp = JIT_REG_ID(r);
 			}
 				
 		if (GET_OP(op) == JIT_DECL_ARG) {

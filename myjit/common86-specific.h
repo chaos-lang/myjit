@@ -80,8 +80,8 @@ static int uses_hw_reg(struct jit_op * op, jit_value reg, int fp)
 	if ((GET_OP(op) == JIT_RENAMEREG) && (op->r_arg[0] == reg)) return 1; // not a regular operation
 	for (int i = 0; i < 3; i++)
 		if ((ARG_TYPE(op, i + 1) == REG) || (ARG_TYPE(op, i + 1) == TREG)) {
-			if (fp && (JIT_REG(op->arg[i]).type == JIT_RTYPE_INT)) continue;
-			if (!fp && (JIT_REG(op->arg[i]).type == JIT_RTYPE_FLOAT)) continue;
+			if (fp && (JIT_REG_TYPE(op->arg[i]) == JIT_RTYPE_INT)) continue;
+			if (!fp && (JIT_REG_TYPE(op->arg[i]) == JIT_RTYPE_FLOAT)) continue;
 			if (op->r_arg[i] == reg) return 1;
 		}
 	return 0;
@@ -273,11 +273,11 @@ static void emit_restore_all_regs(struct jit *jit, jit_op *op)
  */
 static void emit_lreg(struct jit * jit, int hreg_id, jit_value vreg)
 {
-	if (JIT_REG(vreg).spec == JIT_RTYPE_ARG) assert(0);
+	if (JIT_REG_SPEC(vreg) == JIT_RTYPE_ARG) assert(0);
 
 	int stack_pos = GET_REG_POS(jit, vreg) ;
 
-	if (JIT_REG(vreg).type == JIT_RTYPE_FLOAT) sse_movlpd_xreg_membase(jit->ip, hreg_id, COMMON86_BP, stack_pos);
+	if (JIT_REG_TYPE(vreg) == JIT_RTYPE_FLOAT) sse_movlpd_xreg_membase(jit->ip, hreg_id, COMMON86_BP, stack_pos);
 	else common86_mov_reg_membase(jit->ip, hreg_id, COMMON86_BP, stack_pos, REG_SIZE);
 }
 
@@ -291,7 +291,7 @@ static void emit_ureg(struct jit * jit, jit_value vreg, int hreg_id)
 {
 	int stack_pos = GET_REG_POS(jit, vreg);
 
-	if (JIT_REG(vreg).type == JIT_RTYPE_FLOAT) sse_movlpd_membase_xreg(jit->ip, hreg_id, COMMON86_BP, stack_pos);
+	if (JIT_REG_TYPE(vreg) == JIT_RTYPE_FLOAT) sse_movlpd_membase_xreg(jit->ip, hreg_id, COMMON86_BP, stack_pos);
 	else common86_mov_membase_reg(jit->ip, COMMON86_BP, stack_pos, hreg_id, REG_SIZE);
 }
 

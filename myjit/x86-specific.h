@@ -17,13 +17,13 @@
  * Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301  USA
  */
 
-#define GET_GPREG_POS(jit, r) (- ((JIT_REG(r).id + 1) * REG_SIZE) - jit_current_func_info(jit)->allocai_mem)
-#define GET_FPREG_POS(jit, r) (- jit_current_func_info(jit)->gp_reg_count * REG_SIZE - (JIT_REG(r).id + 1) * sizeof(jit_float) - jit_current_func_info(jit)->allocai_mem)
+#define GET_GPREG_POS(jit, r) (- ((JIT_REG_ID(r) + 1) * REG_SIZE) - jit_current_func_info(jit)->allocai_mem)
+#define GET_FPREG_POS(jit, r) (- jit_current_func_info(jit)->gp_reg_count * REG_SIZE - (JIT_REG_ID(r) + 1) * sizeof(jit_float) - jit_current_func_info(jit)->allocai_mem)
 
 static inline int GET_REG_POS(struct jit * jit, int r)
 {
-	if (JIT_REG(r).spec == JIT_RTYPE_REG) {
-		if (JIT_REG(r). type == JIT_RTYPE_INT) return GET_GPREG_POS(jit, r);
+	if (JIT_REG_SPEC(r) == JIT_RTYPE_REG) {
+		if (JIT_REG_TYPE(r) == JIT_RTYPE_INT) return GET_GPREG_POS(jit, r);
 		else return GET_FPREG_POS(jit, r);
 	} else assert(0); 
 }

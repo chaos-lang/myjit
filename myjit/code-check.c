@@ -188,7 +188,7 @@ static int check_argument_sizes(jit_op *op, char *msg_buf)
 	return JIT_WARN_INVALID_DATA_SIZE;
 }
 
-#define CHECK_ARG_TYPE(op, index, _type) (((ARG_TYPE(op, index) != REG) && (ARG_TYPE(op, index) != TREG)) || (JIT_REG(op->arg[index - 1]).type == _type))
+#define CHECK_ARG_TYPE(op, index, _type) (((ARG_TYPE(op, index) != REG) && (ARG_TYPE(op, index) != TREG)) || (JIT_REG_TYPE(op->arg[index - 1]) == _type))
 
 static int check_register_types(struct jit *jit, jit_op *op, char *msg_buf)
 {

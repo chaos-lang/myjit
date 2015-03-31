@@ -207,13 +207,13 @@ static int candidate_score(jit_op * op, jit_value virtreg, jit_hw_reg * hreg, in
  */
 static jit_hw_reg * rmap_spill_candidate(struct jit_reg_allocator * al, jit_op * op, jit_value virtreg, int * spill, jit_value * reg_to_spill, int callee_saved)
 {
-	jit_reg r = JIT_REG(virtreg);
+	jit_reg r = (jit_reg) virtreg;
 	jit_hw_reg * regs;
 	int reg_count;
 	jit_hw_reg * result = NULL;
 	int best_score = INT_MIN;
 
-	if (r.type == JIT_RTYPE_INT) {
+	if (JIT_REG_TYPE(r) == JIT_RTYPE_INT) {
 		regs = al->gp_regs;
 		reg_count = al->gp_reg_cnt;
 	} else {
