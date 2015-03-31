@@ -37,7 +37,7 @@ static inline int GET_REG_POS(struct jit * jit, int r)
 			return - (info->allocai_mem + EXTRA_SPACE + info->gp_reg_count * REG_SIZE + JIT_REG_ID(r) * sizeof(double) + sizeof(double));
 		}
 	}
-	if (JIT_REG_SPECT(r) == JIT_RTYPE_ARG) {
+	if (JIT_REG_SPEC(r) == JIT_RTYPE_ARG) {
 		int arg_id = JIT_REG_ID(r);
 		struct jit_inp_arg * a = &(jit_current_func_info(jit)->args[arg_id]);
 		return a->spill_pos;
