@@ -191,6 +191,7 @@ void jit_gen_op(struct jit * jit, jit_op * op);
 char * jit_reg_allocator_get_hwreg_name(struct jit_reg_allocator * al, int reg);
 int jit_reg_in_use(jit_op * op, int reg, int fp);
 jit_hw_reg * jit_get_unused_reg(struct jit_reg_allocator * al, jit_op * op, int fp);
+jit_hw_reg * jit_get_unused_reg_with_index(struct jit_reg_allocator * al, jit_op * op, int fp, int index);
 void rmap_free(jit_rmap * regmap);
 void jit_allocator_hints_free(jit_tree *);
 

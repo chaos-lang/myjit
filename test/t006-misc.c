@@ -164,6 +164,99 @@ DEFINE_TEST(test20)
 	return 0;
 }
 
+
+DEFINE_TEST(test30)
+{
+	plfv f1;
+	static char x[] = { -2, -3, -4, -5, -6, -7, -8, -9, -10 };
+	static char y[] = { 10, 20, 30, 40, 50, 60, 70, 80, 90, 100 };
+
+	jit_prolog(p, &f1);
+	jit_movi(p, R(0), x + 2);
+	jit_movi(p, R(1), y + 1);
+
+	jit_memcpyi(p, R(0), R(1), 5);
+
+	jit_reti(p, 0);
+	JIT_GENERATE_CODE(p);
+
+	ASSERT_EQ(0, f1());
+
+	ASSERT_EQ(-2, x[0]);
+	ASSERT_EQ(-3, x[1]);
+	ASSERT_EQ(20, x[2]);
+	ASSERT_EQ(30, x[3]);
+	ASSERT_EQ(40, x[4]);
+	ASSERT_EQ(50, x[5]);
+	ASSERT_EQ(60, x[6]);
+	ASSERT_EQ(-9, x[7]);
+	ASSERT_EQ(-10, x[8]);
+
+	return 0;
+}
+
+DEFINE_TEST(test31)
+{
+	plfv f1;
+	static char x[] = { -2, -3, -4, -5, -6, -7, -8, -9, -10 };
+	static char y[] = { 10, 20, 30, 40, 50, 60, 70, 80, 90, 100 };
+
+	jit_prolog(p, &f1);
+	jit_movi(p, R(0), x + 2);
+	jit_movi(p, R(1), y + 1);
+	jit_movi(p, R(2), 5);
+
+	jit_memcpyr(p, R(0), R(1), R(2));
+
+	jit_reti(p, 0);
+	JIT_GENERATE_CODE(p);
+
+	ASSERT_EQ(0, f1());
+
+	ASSERT_EQ(-2, x[0]);
+	ASSERT_EQ(-3, x[1]);
+	ASSERT_EQ(20, x[2]);
+	ASSERT_EQ(30, x[3]);
+	ASSERT_EQ(40, x[4]);
+	ASSERT_EQ(50, x[5]);
+	ASSERT_EQ(60, x[6]);
+	ASSERT_EQ(-9, x[7]);
+	ASSERT_EQ(-10, x[8]);
+
+	return 0;
+}
+
+DEFINE_TEST(test32)
+{
+	plfv f1;
+	static char x[] = { -2, -3, -4, -5, -6, -7, -8, -9, -10 };
+	static char y[] = { 10, 20, 30, 40, 50, 60, 70, 80, 90, 100 };
+
+	jit_prolog(p, &f1);
+	jit_movi(p, R(0), x + 2);
+	jit_movi(p, R(1), y + 1);
+	jit_movi(p, R(2), 5);
+
+	jit_memcpyr(p, R(0), R(1), R(2));
+
+	jit_retr(p, R(2));
+	JIT_GENERATE_CODE(p);
+
+	ASSERT_EQ(5, f1());
+
+	ASSERT_EQ(-2, x[0]);
+	ASSERT_EQ(-3, x[1]);
+	ASSERT_EQ(20, x[2]);
+	ASSERT_EQ(30, x[3]);
+	ASSERT_EQ(40, x[4]);
+	ASSERT_EQ(50, x[5]);
+	ASSERT_EQ(60, x[6]);
+	ASSERT_EQ(-9, x[7]);
+	ASSERT_EQ(-10, x[8]);
+
+	return 0;
+}
+
 void test_setup()
 {
 	test_filename = __FILE__;
@@ -175,4 +268,7 @@ void test_setup()
 	SETUP_TEST(test12);
 #endif
 	SETUP_TEST(test20);
+	SETUP_TEST(test30);
+	SETUP_TEST(test31);
+	SETUP_TEST(test32);
 }

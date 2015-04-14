@@ -629,8 +629,9 @@ int jit_reg_in_use(jit_op * op, int reg, int fp)
 
 /**
  * returns a register which is unused, otherwise returns NULL
+ * index -- indicates the position in the list of unused register (0 -- first unused register, 1 -- second, etc.) 
  */
-jit_hw_reg * jit_get_unused_reg(struct jit_reg_allocator * al, jit_op * op, int fp)
+jit_hw_reg * jit_get_unused_reg_with_index(struct jit_reg_allocator * al, jit_op * op, int fp, int index)
 {
 	jit_hw_reg * regs;
 	int reg_count;
@@ -642,7 +643,20 @@ jit_hw_reg * jit_get_unused_reg(struct jit_reg_allocator * al, jit_op * op, int 
 		regs = al->fp_regs;
 		reg_count = al->fp_reg_cnt;
 	}
-	for (int i = 0; i < reg_count; i++)
-		if (!jit_reg_in_use(op, regs[i].id, fp)) return &(regs[i]);
+	for (int i = 0; i < reg_count; i++) {
+		if (regs[i].callee_saved) continue;
+		if (!jit_reg_in_use(op, regs[i].id, fp)) {
+			if (index == 0) return &(regs[i]);
+			else index--;
+		}
+	}
 	return NULL;
+}
+
+/**
+ * returns a register which is unused, otherwise returns NULL
+ */
+jit_hw_reg * jit_get_unused_reg(struct jit_reg_allocator * al, jit_op * op, int fp)
+{
+	return jit_get_unused_reg_with_index(al, op, fp, 0);
 }

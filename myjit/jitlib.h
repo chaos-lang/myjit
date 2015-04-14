@@ -23,7 +23,7 @@
 #define _XOPEN_SOURCE 600
 
 #include <stdint.h>
-#include <string.h> // FIXME: get rid of memcpy 
+#include <stdlib.h>
 #include "cpu-detect.h"
 
 /*
@@ -142,6 +142,7 @@ typedef enum {
 	JIT_LDX		= (0x22 << 3),
 	JIT_ST		= (0x23 << 3),
 	JIT_STX		= (0x24 << 3),
+	JIT_MEMCPY	= (0x25 << 3),
 
 	JIT_JMP 	= (0x30 << 3),
 	JIT_PREPARE 	= (0x31 << 3),
@@ -487,6 +488,9 @@ int jit_allocai(struct jit * jit, int size);
 #define jit_sti(jit, a, b, c) jit_add_op(jit, JIT_ST | IMM, SPEC(IMM, REG, NO), (jit_value)(a), b, 0, c, jit_debug_info_new(__FILE__, __func__, __LINE__))
 #define jit_stxr(jit, a, b, c, d) jit_add_op(jit, JIT_STX | REG, SPEC(REG, REG, REG), a, b, c, d, jit_debug_info_new(__FILE__, __func__, __LINE__))
 #define jit_stxi(jit, a, b, c, d) jit_add_op(jit, JIT_STX | IMM, SPEC(IMM, REG, REG), (jit_value)(a), b, c, d, jit_debug_info_new(__FILE__, __func__, __LINE__))
+
+#define jit_memcpyr(jit, a, b, c) jit_add_op(jit, JIT_MEMCPY | REG, SPEC(REG, REG, REG), a, b, c, 0, jit_debug_info_new(__FILE__, __func__, __LINE__))
+#define jit_memcpyi(jit, a, b, c) jit_add_op(jit, JIT_MEMCPY | IMM, SPEC(REG, REG, IMM), a, b, c, 0, jit_debug_info_new(__FILE__, __func__, __LINE__))
 
 /* debugging */
 

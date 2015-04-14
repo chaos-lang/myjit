@@ -37,6 +37,9 @@ ROADMAP
 	* amd64 testing
 	* sparc testing
 
++ release 0.9.1
+	* jit_memcpy
+
 
 + release 1.0.0
 	+ reg. allocator should be aware of operations having particular requirements on registers, e.g., MUL, DIV, SHL.
