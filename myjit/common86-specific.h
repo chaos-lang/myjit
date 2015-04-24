@@ -273,8 +273,6 @@ static void emit_restore_all_regs(struct jit *jit, jit_op *op)
  */
 static void emit_lreg(struct jit * jit, int hreg_id, jit_value vreg)
 {
-	if (JIT_REG_SPEC(vreg) == JIT_RTYPE_ARG) assert(0);
-
 	int stack_pos = GET_REG_POS(jit, vreg) ;
 
 	if (JIT_REG_TYPE(vreg) == JIT_RTYPE_FLOAT) sse_movlpd_xreg_membase(jit->ip, hreg_id, COMMON86_BP, stack_pos);
@@ -355,14 +353,14 @@ static void emit_get_arg(struct jit * jit, jit_op * op)
 		return;
 	} 
 
-	int reg = arg->location.reg;
+	jit_hw_reg *arg_reg = rmap_get(op->regmap, reg_id);
 	if (type != JIT_FLOAT_NUM) {
-		if (size == REG_SIZE) common86_mov_reg_reg(jit->ip, dreg, reg, REG_SIZE);
-		else if (type == JIT_SIGNED_NUM) common86_movsx_reg_reg(jit->ip, dreg, reg, size);
-		else common86_movzx_reg_reg(jit->ip, dreg, reg, size);
+		if (size == REG_SIZE) common86_mov_reg_reg(jit->ip, dreg, arg_reg->id, REG_SIZE);
+		else if (type == JIT_SIGNED_NUM) common86_movsx_reg_reg(jit->ip, dreg, arg_reg->id, size);
+		else common86_movzx_reg_reg(jit->ip, dreg, arg_reg->id, size);
 	} else {
-		if (size == sizeof(float)) sse_cvtss2sd_reg_reg(jit->ip, dreg, reg);
-		else sse_movsd_reg_reg(jit->ip, dreg, reg);
+		if (size == sizeof(float)) sse_cvtss2sd_reg_reg(jit->ip, dreg, arg_reg->id);
+		else sse_movsd_reg_reg(jit->ip, dreg, arg_reg->id);
 	}
 }
 
