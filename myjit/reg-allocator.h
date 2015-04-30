@@ -389,6 +389,7 @@ static void assign_regs(struct jit * jit, struct jit_op * op)
 		case JIT_FULL_SPILL: skip = spill_all_registers(op, al); break;
 		case JIT_FORCE_SPILL: skip = force_spill(op); break;
 		case JIT_FORCE_ASSOC: skip = force_assoc(op, al); break;
+		case JIT_TOUCH: skip = 1; break;
 		default: break;
 	}
 

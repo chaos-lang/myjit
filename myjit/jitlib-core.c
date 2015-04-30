@@ -409,6 +409,8 @@ void jit_generate_code(struct jit * jit)
 			case JIT_FORCE_SPILL:
 			case JIT_FORCE_ASSOC:
 			case JIT_COMMENT:
+			case JIT_MARK:
+			case JIT_TOUCH:
 				break;
 			// platform specific opcodes
 			default: jit_gen_op(jit, op);
@@ -502,4 +504,14 @@ void jit_free(struct jit * jit)
 	free_labels(jit->labels);
 	if (jit->buf) JIT_FREE(jit->buf);
 	JIT_FREE(jit);
+}
+
+int jit_regs_active_count(jit_op *op)
+{
+	return jit_set_size(op->live_out);
+}
+
+void jit_regs_active(jit_op *op, jit_value *dest)
+{
+	jit_set_to_array(op->live_out, dest);
 }

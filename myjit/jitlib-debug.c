@@ -221,6 +221,8 @@ char * jit_get_op_name(struct jit_op * op)
 		case JIT_TRACE:		return ".trace";
 		case JIT_FORCE_SPILL:	return "force_spill";
 		case JIT_FORCE_ASSOC:	return "force_assoc";
+		case JIT_MARK:	return "mark";
+		case JIT_TOUCH:	return "touch";
 
 		case JIT_FMOV:	return "fmov";
 		case JIT_FADD: 	return "fadd";
@@ -751,7 +753,6 @@ static jit_op *print_combined_op(FILE *f, struct jit *jit, struct jit_op *op, ji
 			fprintf(f, ".data\n");
 			print_op_bytes(f, jit, op);
 			break;
-
 		default:
 			if (!op->code_length) break;
 			fprintf(f, ".%s\n", platform_id());

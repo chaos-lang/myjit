@@ -73,4 +73,24 @@ static inline int jit_set_size(jit_set *s)
 {
 	return jit_tree_size(s->root);
 }
+
+struct copy_target {
+        jit_value *target;
+        int index;
+};        
+
+static void copy_reg_to_array(jit_tree_key key, jit_tree_value value, void *target)
+{       
+        struct copy_target *t = target;
+        t->target[t->index] = key;
+        t->index++;
+}  
+
+static inline void jit_set_to_array(jit_set *s, jit_value *dest)
+{
+	struct copy_target t;
+	t.target = dest;
+	t.index = 0;
+	jit_tree_walk(s->root, copy_reg_to_array, &t);
+}
 #endif

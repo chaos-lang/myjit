@@ -242,6 +242,8 @@ typedef enum {
 	JIT_FORCE_SPILL	= (0x0200 << 3),
 	JIT_FORCE_ASSOC = (0x0201 << 3),
 	JIT_TRACE	= (0x0202 << 3),
+	JIT_MARK	= (0x0203 << 3),
+	JIT_TOUCH	= (0x0204 << 3)
 } jit_opcode;
 
 enum jit_inp_type {
@@ -590,6 +592,12 @@ do {\
 /*
  * testing and debugging
  */
-#define jit_force_spill(jit, a) jit_add_fop(jit, JIT_FORCE_SPILL, SPEC(REG, NO, NO), a, 0, 0, 0, 0, jit_debug_info_new(__FILE__, __func__, __LINE__))
-#define jit_force_assoc(jit, a, b, c) jit_add_fop(jit, JIT_FORCE_ASSOC, SPEC(REG, IMM, NO), a, b, c, 0, 0, jit_debug_info_new(__FILE__, __func__, __LINE__))
+#define jit_force_spill(jit, a) jit_add_op(jit, JIT_FORCE_SPILL, SPEC(REG, NO, NO), a, 0, 0, 0, jit_debug_info_new(__FILE__, __func__, __LINE__))
+#define jit_force_assoc(jit, a, b, c) jit_add_op(jit, JIT_FORCE_ASSOC, SPEC(REG, IMM, NO), a, b, c, 0, jit_debug_info_new(__FILE__, __func__, __LINE__))
+#define jit_mark(jit, a) jit_add_op(jit, JIT_MARK, SPEC(IMM, NO, NO), (jit_value)(a), 0, 0, 0, jit_debug_info_new(__FILE__, __func__, __LINE__))
+#define jit_full_spill(jit) jit_add_op(jit, JIT_FULL_SPILL, SPEC(NO, NO, NO), 0, 0, 0, 0, jit_debug_info_new(__FILE__, __func__, __LINE__))
+#define jit_touch(jit, a) jit_add_op(jit, JIT_TOUCH, SPEC(TREG, NO, NO), (jit_value)(a), 0, 0, 0, jit_debug_info_new(__FILE__, __func__, __LINE__))
+
+int jit_regs_active_count(jit_op *op);
+void jit_regs_active(jit_op *op, jit_value *dest);
 #endif
