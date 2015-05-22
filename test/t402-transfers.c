@@ -95,6 +95,9 @@ DEFINE_TEST(test12)
 
 DEFINE_TEST(test20)
 {
+#ifdef JIT_ARCH_SPARC
+	IGNORE_TEST
+#endif
 	plfv f1;
 	static char x[] = { -2, -3, -4, -5, -6, -7, -8, -9, -10 };
 	static char y[] = { 10, 20, 30, 40, 50, 60, 70, 80, 90, 100 };
@@ -127,6 +130,9 @@ DEFINE_TEST(test20)
 
 DEFINE_TEST(test21)
 {
+#ifdef JIT_ARCH_SPARC
+	IGNORE_TEST
+#endif
 	plfv f1;
 	static int x[] = { -2, -3, -4, -5, -6, -7, -8, -9, -10 };
 	static int y[] = { 10, 20, 30, 40, 50, 60, 70, 80, 90, 100 };
@@ -159,6 +165,9 @@ DEFINE_TEST(test21)
 
 DEFINE_TEST(test30)
 {
+#ifdef JIT_ARCH_SPARC
+	IGNORE_TEST
+#endif
 	plfv f1;
 	static int x[] = { -2, -3, -4, -5, -6, -7, -8, -9, -10 };
 	static int y[] = { 10, 20, 30, 40, 50, 60, 70, 80, 90, 100 };
@@ -191,6 +200,9 @@ DEFINE_TEST(test30)
 
 DEFINE_TEST(test31)
 {
+#ifdef JIT_ARCH_SPARC
+	IGNORE_TEST
+#endif
 	plfv f1;
 	static int x[] = { -2, -3, -4, -5, -6, -7, -8, -9, -10 };
 	static int y[] = { 10, 20, 30, 40, 50, 60, 70, 80, 90, 100 };
@@ -225,6 +237,9 @@ DEFINE_TEST(test31)
 
 DEFINE_TEST(test32)
 {
+#ifdef JIT_ARCH_SPARC
+	IGNORE_TEST
+#endif
 	plfv f1;
 	static int x[] = { -2, -3, -4, -5, -6, -7, -8, -9, -10 };
 	static int y[] = { 10, 20, 30, 40, 50, 60, 70, 80, 90, 100 };
@@ -261,6 +276,9 @@ DEFINE_TEST(test32)
 
 DEFINE_TEST(test33)
 {
+#ifdef JIT_ARCH_SPARC
+	IGNORE_TEST
+#endif
 	plfv f1;
 	static int x[] = { -2, -3, -4, -5, -6, -7, -8, -9, -10 };
 	static int y[] = { 10, 20, 30, 40, 50, 60, 70, 80, 90, 100 };
