@@ -76,6 +76,7 @@ typedef struct jit_op {
 	struct jit_debug_info *debug_info;
 	unsigned long code_offset;			// offset in the output buffer
 	unsigned long code_length;			// offset in the output buffer
+	void *addendum;			// additional information
 } jit_op;
 
 typedef struct jit_label {
@@ -228,6 +229,17 @@ typedef enum {
 	JIT_CODE_ALIGN	= (0xb3 << 3),
 	JIT_REF_CODE	= (0xb4 << 3),
 	JIT_REF_DATA	= (0xb5 << 3),
+
+	// block transfers
+	JIT_TRANSFER	  = (0xc0 << 3),
+	JIT_TRANSFER_CPY  = (0xc1 << 3),
+	JIT_TRANSFER_XOR  = (0xc2 << 3),
+	JIT_TRANSFER_AND  = (0xc3 << 3),
+	JIT_TRANSFER_OR   = (0xc4 << 3),
+	JIT_TRANSFER_ADD  = (0xc5 << 3),
+	JIT_TRANSFER_ADDS = (0xc6 << 3),
+	JIT_TRANSFER_SUB  = (0xc7 << 3),
+	JIT_TRANSFER_SUBS = (0xc8 << 3),
 
 	JIT_MSG		= (0xf0 << 3),
 	JIT_COMMENT	= (0xf1 << 3),
@@ -491,8 +503,23 @@ int jit_allocai(struct jit * jit, int size);
 #define jit_stxr(jit, a, b, c, d) jit_add_op(jit, JIT_STX | REG, SPEC(REG, REG, REG), a, b, c, d, jit_debug_info_new(__FILE__, __func__, __LINE__))
 #define jit_stxi(jit, a, b, c, d) jit_add_op(jit, JIT_STX | IMM, SPEC(IMM, REG, REG), (jit_value)(a), b, c, d, jit_debug_info_new(__FILE__, __func__, __LINE__))
 
+/* transfer operations */
+
 #define jit_memcpyr(jit, a, b, c) jit_add_op(jit, JIT_MEMCPY | REG, SPEC(REG, REG, REG), a, b, c, 0, jit_debug_info_new(__FILE__, __func__, __LINE__))
 #define jit_memcpyi(jit, a, b, c) jit_add_op(jit, JIT_MEMCPY | IMM, SPEC(REG, REG, IMM), a, b, c, 0, jit_debug_info_new(__FILE__, __func__, __LINE__))
+
+#define jit_transferr(jit, a, b, c, d) jit_add_op(jit, JIT_TRANSFER | REG, SPEC(REG, REG, REG), a, b, c, d, jit_debug_info_new(__FILE__, __func__, __LINE__))
+#define jit_transferi(jit, a, b, c, d) jit_add_op(jit, JIT_TRANSFER | IMM, SPEC(REG, REG, IMM), a, b, c, d, jit_debug_info_new(__FILE__, __func__, __LINE__))
+
+#define jit_transfer_cpy(jit, a)  jit_add_op(jit, JIT_TRANSFER_CPY, SPEC(IMM, NO, NO), (jit_value)(a), 0, 0, 0, jit_debug_info_new(__FILE__, __func__, __LINE__))
+#define jit_transfer_xorr(jit, a, b) jit_add_op(jit, JIT_TRANSFER_XOR | REG, SPEC(IMM, REG, NO), (jit_value)(a), b, 0, 0, jit_debug_info_new(__FILE__, __func__, __LINE__))
+#define jit_transfer_andr(jit, a, b) jit_add_op(jit, JIT_TRANSFER_AND | REG, SPEC(IMM, REG, NO), (jit_value)(a), b, 0, 0, jit_debug_info_new(__FILE__, __func__, __LINE__))
+#define jit_transfer_orr(jit, a, b) jit_add_op(jit, JIT_TRANSFER_OR | REG, SPEC(IMM, REG, NO), (jit_value)(a), b, 0, 0, jit_debug_info_new(__FILE__, __func__, __LINE__))
+
+#define jit_transfer_addr(jit, a, b) jit_add_op(jit, JIT_TRANSFER_ADD | REG, SPEC(IMM, REG, NO), (jit_value)(a), b, 0, 0, jit_debug_info_new(__FILE__, __func__, __LINE__))
+#define jit_transfer_subr(jit, a, b) jit_add_op(jit, JIT_TRANSFER_SUB | REG, SPEC(IMM, REG, NO), (jit_value)(a), b, 0, 0, jit_debug_info_new(__FILE__, __func__, __LINE__))
+
+
 
 /* debugging */
 

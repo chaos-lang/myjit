@@ -464,6 +464,7 @@ static void free_ops(struct jit_op * op)
 {
 	if (op == NULL) return;
 	free_ops(op->next);
+	if (op->addendum) JIT_FREE(op->addendum);
 	jit_free_op(op);
 
 }

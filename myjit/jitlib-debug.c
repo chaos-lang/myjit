@@ -224,6 +224,14 @@ char * jit_get_op_name(struct jit_op * op)
 		case JIT_MARK:	return "mark";
 		case JIT_TOUCH:	return "touch";
 
+		case JIT_TRANSFER: return "transfer";
+		case JIT_TRANSFER_CPY: return "transfer_cpy";
+		case JIT_TRANSFER_AND: return "transfer_and";
+		case JIT_TRANSFER_OR:  return "transfer_or";
+		case JIT_TRANSFER_XOR: return "transfer_xor";
+		case JIT_TRANSFER_ADD: return "transfer_add";
+		case JIT_TRANSFER_SUB: return "transfer_sub";
+
 		case JIT_FMOV:	return "fmov";
 		case JIT_FADD: 	return "fadd";
 		case JIT_FSUB: 	return "fsub";

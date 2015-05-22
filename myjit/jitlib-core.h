@@ -222,6 +222,7 @@ static struct jit_op * jit_op_new(unsigned short code, unsigned char spec, long 
 	r->live_out = NULL;
 	r->allocator_hints = NULL;
 	r->debug_info = NULL;
+	r->addendum = NULL;
 	return r;
 }
 

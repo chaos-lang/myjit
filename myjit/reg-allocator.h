@@ -332,17 +332,29 @@ static void associate_register_alias(struct jit_reg_allocator * al, jit_op * op,
 	else assert(0);
 }
 
+static int is_transfer_op(jit_op *op)
+{
+	jit_opcode code = GET_OP(op);
+	return (code == JIT_TRANSFER_ADD)
+		|| (code == JIT_TRANSFER_SUB)
+		|| (code == JIT_TRANSFER_OR)
+		|| (code == JIT_TRANSFER_XOR)
+		|| (code == JIT_TRANSFER_AND); 
+}
+
 static void associate_register(struct jit_reg_allocator * al, jit_op * op, int i)
 {
 	jit_hw_reg * reg = rmap_get(op->regmap, op->arg[i]);
 	if (reg) op->r_arg[i] = reg->id;
 	else {
-		reg = make_free_reg(al, op, op->arg[i]);
-		rmap_assoc(op->regmap, op->arg[i], reg);
+		if (!is_transfer_op(op)) {
+			reg = make_free_reg(al, op, op->arg[i]);
+			rmap_assoc(op->regmap, op->arg[i], reg);
 
-		op->r_arg[i] = reg->id;
-		if (jit_set_get(op->live_in, op->arg[i]))
-			load_reg(op, rmap_get(op->regmap, op->arg[i]), op->arg[i]);
+			op->r_arg[i] = reg->id;
+			if (jit_set_get(op->live_in, op->arg[i]))
+				load_reg(op, rmap_get(op->regmap, op->arg[i]), op->arg[i]);
+		} else op->r_arg[i] = -1;
 	}
 }
 
@@ -370,7 +382,7 @@ static void assign_regs(struct jit * jit, struct jit_op * op)
 		}
 	}
 
-	// operations reuqiring some special core
+	// operations requiring some special core
 	switch (GET_OP(op)) {
 		case JIT_PREPARE: prepare_registers_for_call(al, op); break;
 		// PUTARG have to take care of the register allocation by itself

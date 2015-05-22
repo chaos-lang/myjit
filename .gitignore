@@ -26,6 +26,7 @@ test/t202
 test/t301
 test/t302
 test/t401
+test/t402
 sse-test
 debug
 core

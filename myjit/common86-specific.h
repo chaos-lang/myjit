@@ -767,49 +767,106 @@ static void emit_ldx_op(struct jit * jit, jit_op * op, jit_value a1, jit_value a
 	}
 }
 
-static void emit_memcpy(struct jit * jit, jit_op * op, jit_value a1, jit_value a2, jit_value a3)
-{
-
-	jit_hw_reg * scrap = jit_get_unused_reg_with_index(jit->reg_al, op, 0, 0);
-	int scrapreg = (scrap ? scrap->id : COMMON86_AX);
-	int scrap_in_use = jit_reg_in_use(op, scrapreg, 0);
-
+struct transfer_info {
+	int sourcereg;
+	int destreg;
+	int scrapreg;
+	int scrap_in_use;
 	int counterreg;
 	int counter_in_use;
+	int block_size;
+	unsigned char *loop_addr;
+};
 
+static void emit_transfer_init(struct jit * jit, jit_op * op, jit_value destreg, jit_value srcreg, jit_value cnt, int block_size)
+{
+	struct transfer_info *tinf = JIT_MALLOC(sizeof(struct transfer_info));	
+	tinf->sourcereg = srcreg;
+	tinf->destreg = destreg;
+	tinf->block_size = block_size;
+
+	jit_hw_reg * scrap = jit_get_unused_reg_with_index(jit->reg_al, op, 0, 0);
+	tinf->scrapreg = (scrap ? scrap->id : COMMON86_AX);
+	tinf->scrap_in_use = jit_reg_in_use(op, tinf->scrapreg, 0);
 
 	if (IS_IMM(op)) {
-
 		jit_hw_reg * counter = jit_get_unused_reg_with_index(jit->reg_al, op, 0, 1);
-		counterreg = (counter ? counter->id : COMMON86_CX);
-		counter_in_use = jit_reg_in_use(op, counterreg, 0);
+		tinf->counterreg = (counter ? counter->id : COMMON86_CX);
+		tinf->counter_in_use = jit_reg_in_use(op, tinf->counterreg, 0);
 	} else {
 		if (jit_set_get(op->live_out, op->arg[2])) {
 			jit_hw_reg * counter = jit_get_unused_reg_with_index(jit->reg_al, op, 0, 1);
-			counterreg = (counter ? counter->id : a3);
-			counter_in_use = jit_reg_in_use(op, counterreg, 0);
+			tinf->counterreg = (counter ? counter->id : cnt);
+			tinf->counter_in_use = jit_reg_in_use(op, tinf->counterreg, 0);
 		} else {
-			counterreg = a3;
-			counter_in_use = 0;
+			tinf->counterreg = cnt;
+			tinf->counter_in_use = 0;
 		}
 	}
 
-	if (counter_in_use) common86_push_reg(jit->ip, counterreg); 
-	if (scrap_in_use) common86_push_reg(jit->ip, scrapreg); 
+	if (tinf->counter_in_use) common86_mov_membase_reg(jit->ip, COMMON86_SP, REG_SIZE, tinf->counterreg, REG_SIZE);
+	if (tinf->scrap_in_use) common86_mov_membase_reg(jit->ip, COMMON86_SP, REG_SIZE * 2, tinf->scrapreg, REG_SIZE);
 
-	if (IS_IMM(op)) common86_mov_reg_imm(jit->ip, counterreg, a3);
-	else if (counterreg != a3) common86_mov_reg_reg(jit->ip, counterreg, a3, REG_SIZE);
+	if (IS_IMM(op)) common86_mov_reg_imm(jit->ip, tinf->counterreg, cnt * block_size);
+	else if ((tinf->counterreg != cnt) || block_size > 1) {
+		int shift;
+		if (block_size == 1) shift = 0;
+		else if (block_size == 2) shift = 1;
+		else if (block_size == 4) shift = 2; 
+		else if (block_size == 8) shift = 3; 
+		else assert(0);
+		common86_lea_memindex(jit->ip, tinf->counterreg, X86_NOBASEREG, 0, cnt, shift);
+	}
 
-	jit_value loop = (jit_value) jit->ip;
-	common86_mov_reg_memindex(jit->ip, scrapreg, a2, -1, counterreg, 0, 1);
-	common86_mov_memindex_reg(jit->ip, a1, -1, counterreg, 0, scrapreg, 1);
+////////////////
 
-	common86_alu_reg_imm(jit->ip, X86_SUB, counterreg, 1);
+	tinf->loop_addr = jit->ip;
+	op->addendum = tinf;
+
+	if (block_size == REG_SIZE) common86_mov_reg_memindex(jit->ip, tinf->scrapreg, srcreg, -block_size, tinf->counterreg, 0, block_size);
+	else common86_movsx_reg_memindex(jit->ip, tinf->scrapreg, srcreg, -block_size, tinf->counterreg, 0, block_size);
+}
+
+static void emit_transfer_loop(struct jit *jit, jit_op *op)
+{
+	struct transfer_info *tinf = (struct transfer_info *)op->addendum;
+	jit_value loop = (jit_value) tinf->loop_addr;
+
+	common86_mov_memindex_reg(jit->ip, tinf->destreg, -tinf->block_size, tinf->counterreg, 0, tinf->scrapreg, tinf->block_size);
+	common86_alu_reg_imm(jit->ip, X86_SUB, tinf->counterreg, tinf->block_size);
 	common86_branch_disp(jit->ip, X86_CC_NZ, loop - (jit_value) jit->ip, 0);
 
-	if (scrap_in_use) common86_push_reg(jit->ip, scrapreg); 
-	if (counter_in_use) common86_push_reg(jit->ip, counterreg); 
+	if (tinf->counter_in_use) common86_mov_reg_membase(jit->ip, tinf->counterreg, COMMON86_SP, REG_SIZE, REG_SIZE);
+	if (tinf->scrap_in_use) common86_mov_reg_membase(jit->ip, tinf->scrapreg, COMMON86_SP, REG_SIZE * 2, REG_SIZE);
 }
+
+static void emit_transfer_op(struct jit *jit, jit_op *op, int alu_op)
+{
+	jit_op *init_op = op->prev;
+	while (GET_OP(init_op) != JIT_TRANSFER)
+		init_op = init_op->prev;
+
+	struct transfer_info *tinf = (struct transfer_info *)init_op->addendum;
+
+	if (op->r_arg[1] != -1) {
+		if ((op->r_arg[1] == tinf->counterreg) && (tinf->counter_in_use)) {
+			common86_alu_reg_membase(jit->ip, alu_op, tinf->scrapreg, COMMON86_SP, REG_SIZE);
+		} else if ((op->r_arg[1] == tinf->scrapreg) && (tinf->scrap_in_use)) {
+			common86_alu_reg_membase(jit->ip, alu_op, tinf->scrapreg, COMMON86_SP, REG_SIZE * 2);
+		} else common86_alu_reg_reg(jit->ip, alu_op, tinf->scrapreg, op->r_arg[1]);
+	}
+	else common86_alu_reg_membase(jit->ip, alu_op, tinf->scrapreg, COMMON86_BP, GET_REG_POS(jit, op->arg[1]));
+	
+
+	if (op->arg[0]) emit_transfer_loop(jit, (jit_op *)op->arg[0]);
+}
+
+static void emit_memcpy(struct jit * jit, jit_op * op, jit_value a1, jit_value a2, jit_value a3)
+{
+	emit_transfer_init(jit, op, a1, a2, a3, 1);
+	emit_transfer_loop(jit, op);
+}
+
 
 int jit_allocai(struct jit * jit, int size)
 {                                      
@@ -960,7 +1017,14 @@ void jit_gen_op(struct jit * jit, struct jit_op * op)
 		case JIT_FSTX: 	emit_sse_fstx_op(jit, op, a1, a2, a3); break;
 		case JIT_FLD: 	emit_sse_fld_op(jit, op, a1, a2); break;
 		case JIT_FLDX: 	emit_sse_fldx_op(jit, op, a1, a2, a3); break;
-		case JIT_MEMCPY:emit_memcpy(jit, op, a1, a2, a3); break;
+		case JIT_MEMCPY: emit_memcpy(jit, op, a1, a2, a3); break;
+		case JIT_TRANSFER: emit_transfer_init(jit, op, a1, a2, a3, op->arg_size); break;
+		case JIT_TRANSFER_CPY: emit_transfer_loop(jit, (jit_op *)a1); break;
+		case JIT_TRANSFER_XOR: emit_transfer_op(jit, op, X86_XOR); break;
+		case JIT_TRANSFER_AND: emit_transfer_op(jit, op, X86_AND); break;
+		case JIT_TRANSFER_OR:  emit_transfer_op(jit, op, X86_OR); break;
+		case JIT_TRANSFER_ADD: emit_transfer_op(jit, op, X86_ADD); break;
+		case JIT_TRANSFER_SUB: emit_transfer_op(jit, op, X86_SUB); break;
 
 		case JIT_ALLOCA: break;
 		case JIT_DECL_ARG: break;
