@@ -61,6 +61,7 @@
 #define common86_alu_reg_reg(ptr, op, reg1, reg2) 	x86_alu_reg_reg(ptr, op, reg1, reg2)
 #define common86_alu_reg_imm(ptr, op, reg, imm) 	x86_alu_reg_imm(ptr, op, reg, imm)
 #define common86_alu_reg_membase(ptr, op, reg, basereg, disp) 	x86_alu_reg_membase(ptr, op, reg, basereg, disp)
+#define common86_alu_reg_memindex(ptr, op, reg, basereg, disp, indexreg, shift) 	x86_alu_reg_memindex(ptr, op, reg, basereg, disp, indexreg, shift)
 
 #define common86_shift_reg_imm(ptr, op, reg, imm) 	x86_shift_reg_imm(ptr, op, reg, imm)
 #define common86_shift_reg(ptr, op, reg) 		x86_shift_reg(ptr, op, reg)
@@ -152,6 +153,7 @@
 #define common86_alu_reg_reg(ptr, op, reg1, reg2) 	amd64_alu_reg_reg(ptr, op, reg1, reg2)
 #define common86_alu_reg_imm(ptr, op, reg, imm) 	amd64_alu_reg_imm(ptr, op, reg, imm)
 #define common86_alu_reg_membase(ptr, op, reg, basereg, disp) 	amd64_alu_reg_membase(ptr, op, reg, basereg, disp)
+#define common86_alu_reg_memindex(ptr, op, reg, basereg, disp, indexreg, shift) 	amd64_alu_reg_memindex(ptr, op, reg, basereg, disp, indexreg, shift)
 
 #define common86_shift_reg_imm(ptr, op, reg, imm) 	amd64_shift_reg_imm(ptr, op, reg, imm)
 #define common86_shift_reg(ptr, op, reg) 		amd64_shift_reg(ptr, op, reg)

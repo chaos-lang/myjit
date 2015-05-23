@@ -317,14 +317,14 @@ typedef union {
 			x86_imm_emit32 ((inst), (disp));	\
 		} else if ((disp) == 0 && (basereg) != X86_EBP) {	\
 			x86_address_byte ((inst), 0, (r), 4);	\
-			x86_address_byte ((inst), (shift), (indexreg), ((basereg)&0x7));	\
+			x86_address_byte ((inst), (shift), (indexreg)&0x7, ((basereg)&0x7));	\
 		} else if (x86_is_imm8((disp))) {	\
 			x86_address_byte ((inst), 1, (r), 4);	\
-			x86_address_byte ((inst), (shift), (indexreg), ((basereg)&0x7));	\
+			x86_address_byte ((inst), (shift), (indexreg)&0x7, ((basereg)&0x7));	\
 			x86_imm_emit8 ((inst), (disp));	\
 		} else {	\
 			x86_address_byte ((inst), 2, (r), 4);	\
-			x86_address_byte ((inst), (shift), (indexreg), 5);	\
+			x86_address_byte ((inst), (shift), (indexreg)&0x7, ((basereg)&0x7));	\
 			x86_imm_emit32 ((inst), (disp));	\
 		}	\
 	} while (0)
@@ -629,6 +629,13 @@ typedef union {
 		*(inst)++ = (((unsigned char)(opc)) << 3) + 3;	\
 		x86_membase_emit ((inst), (reg), (basereg), (disp));	\
 	} while (0)
+
+#define x86_alu_reg_memindex(inst,opc,reg,basereg,disp,indexreg,shift)	\
+	do {	\
+		*(inst)++ = (((unsigned char)(opc)) << 3) + 3;	\
+		x86_memindex_emit ((inst), (reg), (basereg), (disp), (indexreg), (shift)); \
+	} while (0)
+
 
 #define x86_test_reg_imm(inst,reg,imm)	\
 	do {	\

@@ -1339,6 +1339,9 @@ do {     \
 #define amd64_alu_reg8_reg8_size(inst,opc,dreg,reg,is_dreg_h,is_reg_h,size) do { amd64_emit_rex ((inst),(size),(dreg),0,(reg)); x86_alu_reg8_reg8((inst),(opc),((dreg)&0x7),((reg)&0x7),(is_dreg_h),(is_reg_h)); } while (0)
 #define amd64_alu_reg_mem_size(inst,opc,reg,mem,size) do { amd64_emit_rex ((inst),(size),0,0,(reg)); x86_alu_reg_mem((inst),(opc),((reg)&0x7),(mem)); } while (0)
 #define amd64_alu_reg_membase_size(inst,opc,reg,basereg,disp,size) do { amd64_emit_rex ((inst),(size),(reg),0,(basereg)); x86_alu_reg_membase((inst),(opc),((reg)&0x7),((basereg)&0x7),(disp)); } while (0)
+
+#define amd64_alu_reg_memindex(inst,op,reg,basereg,disp,indexreg,shift) do { amd64_emit_rex ((inst),/*(size)*/8,(reg),(indexreg),(basereg)); x86_alu_reg_memindex((inst),(op),((reg)&0x7),((basereg)&0x7),(disp),((indexreg)&0x7),(shift)); } while (0)
+
 #define amd64_test_reg_imm_size(inst,reg,imm,size) do { amd64_emit_rex ((inst),(size),0,0,(reg)); x86_test_reg_imm((inst),((reg)&0x7),(imm)); } while (0)
 #define amd64_test_mem_imm_size(inst,mem,imm,size) do { amd64_emit_rex ((inst),(size),0,0,0); x86_test_mem_imm((inst),(mem),(imm)); } while (0)
 #define amd64_test_membase_imm_size(inst,basereg,disp,imm,size) do { amd64_emit_rex ((inst),(size),0,0,(basereg)); x86_test_membase_imm((inst),((basereg)&0x7),(disp),(imm)); } while (0)

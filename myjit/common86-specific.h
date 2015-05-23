@@ -848,7 +848,9 @@ static void emit_transfer_op(struct jit *jit, jit_op *op, int alu_op)
 
 	struct transfer_info *tinf = (struct transfer_info *)init_op->addendum;
 
-	if (op->r_arg[1] != -1) {
+	if (op->arg[1] == R_OUT) {
+		common86_alu_reg_memindex(jit->ip, alu_op, tinf->scrapreg, tinf->destreg, -tinf->block_size, tinf->counterreg, 0);
+	} else if (op->r_arg[1] != -1) {
 		if ((op->r_arg[1] == tinf->counterreg) && (tinf->counter_in_use)) {
 			common86_alu_reg_membase(jit->ip, alu_op, tinf->scrapreg, COMMON86_SP, REG_SIZE);
 		} else if ((op->r_arg[1] == tinf->scrapreg) && (tinf->scrap_in_use)) {
