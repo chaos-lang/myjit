@@ -236,7 +236,7 @@ static int jit_op_is_data_op(jit_op *op)
 	if (!op) return 0;
 	
 	jit_opcode code = GET_OP(op);
-	return ((code == JIT_DATA_BYTE) || (code == JIT_DATA_REF_CODE) || (code == JIT_DATA_REF_DATA));
+	return ((code == JIT_DATA_BYTE) || (code == JIT_DATA_BYTES) || (code == JIT_DATA_REF_CODE) || (code == JIT_DATA_REF_DATA));
 }
 
 static int check_data_alignment(jit_op *op, char *msg_buf)

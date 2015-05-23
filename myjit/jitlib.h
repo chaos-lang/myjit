@@ -24,6 +24,7 @@
 
 #include <stdint.h>
 #include <stdlib.h>
+#include <string.h>
 #include "cpu-detect.h"
 
 /*
@@ -224,11 +225,12 @@ typedef enum {
 	JIT_FRET	= (0xa5 << 3),
 
 	JIT_DATA_BYTE	= (0xb0 << 3),
-	JIT_DATA_REF_CODE  = (0xb1 << 3),
-	JIT_DATA_REF_DATA  = (0xb2 << 3),
-	JIT_CODE_ALIGN	= (0xb3 << 3),
-	JIT_REF_CODE	= (0xb4 << 3),
-	JIT_REF_DATA	= (0xb5 << 3),
+	JIT_DATA_BYTES	= (0xb1 << 3),
+	JIT_DATA_REF_CODE  = (0xb2 << 3),
+	JIT_DATA_REF_DATA  = (0xb3 << 3),
+	JIT_CODE_ALIGN	= (0xb4 << 3),
+	JIT_REF_CODE	= (0xb5 << 3),
+	JIT_REF_DATA	= (0xb6 << 3),
 
 	// block transfers
 	JIT_TRANSFER	  = (0xc0 << 3),
@@ -609,12 +611,13 @@ int jit_allocai(struct jit * jit, int size);
 		for (int i = 0; i < count; i++) jit_data_byte(jit, 0x00);\
 	} while(0) 
 
-#define jit_data_bytes(jit, count, data) \
-do {\
-	unsigned char *_data = (unsigned char *) (data);\
-	for (int i = 0; i < count; i++, _data++)\
-		jit_data_byte(jit, *(_data));\
-} while (0)
+static inline jit_op *jit_data_bytes(struct jit *jit, jit_value count, unsigned char *data)
+{
+	jit_op *op = jit_add_op(jit, JIT_DATA_BYTES | IMM, SPEC(IMM, NO, NO), count, 0, 0, 0, NULL);
+	op->addendum = JIT_MALLOC(count);
+	memcpy(op->addendum, data, count);
+	return op;
+}
 
 /*
  * testing and debugging

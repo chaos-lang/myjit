@@ -287,6 +287,7 @@ DEFINE_TEST(test33)
 	jit_movi(p, R(0), x + 2);
 	jit_movi(p, R(1), y + 1);
 	jit_movi(p, R(2), 6);
+	jit_movi(p, R(3), 10);
 	jit_movi(p, R(10), 1);
 	jit_movi(p, R(11), 2);
 	jit_movi(p, R(12), 3);

@@ -398,6 +398,10 @@ void jit_generate_code(struct jit * jit)
 		unsigned long offset_1 = (jit->ip - jit->buf);
 		switch (GET_OP(op)) {
 			case JIT_DATA_BYTE: *(jit->ip)++ = (unsigned char) op->arg[0]; break;
+			case JIT_DATA_BYTES: 
+				for (int i = 0; i < op->arg[0]; i++)
+					*(jit->ip)++ = *(((unsigned char *) op->addendum) + i);
+				break;
 			case JIT_DATA_REF_CODE: 
 			case JIT_DATA_REF_DATA: 
 				op->patch_addr = JIT_BUFFER_OFFSET(jit);

@@ -213,6 +213,7 @@ char * jit_get_op_name(struct jit_op * op)
 		case JIT_NOP:		return "nop";
 		case JIT_CODE_ALIGN:	return ".align";
 		case JIT_DATA_BYTE:	return ".byte";
+		case JIT_DATA_BYTES:	return ".bytes";
 		case JIT_DATA_REF_CODE:	return ".ref_code";
 		case JIT_DATA_REF_DATA:	return ".ref_data";
 		case JIT_REF_CODE:	return "ref_code";
@@ -481,6 +482,15 @@ int print_op(FILE *f, struct jit_disasm * disasm, struct jit_op *op, jit_tree *l
 				print_padding(linebuf, 13);
 				bufprint(linebuf, disasm->generic_value_template, op->arg[0]);
 				goto print;
+			case JIT_DATA_BYTES:
+				bufprint(linebuf, "%s ", op_name);
+				print_padding(linebuf, 13);
+				for (int i = 0; i < op->arg[0]; i++) {
+					bufprint(linebuf, disasm->generic_value_template, ((unsigned char *)op->addendum)[i]);
+					bufprint(linebuf, " ");
+				}
+				goto print;
+
 			case JIT_DATA_REF_CODE:
 			case JIT_DATA_REF_DATA:
 				bufprint(linebuf, "%s ", op_name);
@@ -577,6 +587,13 @@ int print_op_compilable(struct jit_disasm *disasm, struct jit_op * op, jit_tree 
 		case JIT_DATA_BYTE:
 			bufprint(linebuf, "jit_data_byte(p, ");
 			bufprint(linebuf, disasm->generic_value_template, op->arg[0]);
+			goto print;
+		case JIT_DATA_BYTES:
+			for (int i = 0; i < op->arg[0]; i++) {
+				bufprint(linebuf, "jit_data_byte(p, ");
+				bufprint(linebuf, disasm->generic_value_template, ((unsigned char *)op->addendum) [i]);
+				if (i < op->arg[0] - 1) bufprint(linebuf, ");\n");
+			}	
 			goto print;
 		case JIT_REF_CODE:
 		case JIT_REF_DATA:
@@ -724,11 +741,17 @@ static FILE *open_disasm()
 
 static jit_op *print_combined_op(FILE *f, struct jit *jit, struct jit_op *op, jit_tree *labels)
 {
-	if (GET_OP(op) == JIT_DATA_BYTE) {
+	jit_opcode opcode = GET_OP(op);
+	if ((opcode == JIT_DATA_BYTE) || (opcode == JIT_DATA_BYTES)) {
 		fprintf(f, ".text\n%s.byte\n", jit_disasm_general.indent_template);
 		fprintf(f, ".data\n");
-		while (op && (GET_OP(op) == JIT_DATA_BYTE)) {
-			fprintf(f, "%02x ", (unsigned char) op->arg[0]);
+		while (op && ((GET_OP(op) == JIT_DATA_BYTE) || (GET_OP(op) == JIT_DATA_BYTES))) {
+			if (GET_OP(op) == JIT_DATA_BYTE) fprintf(f, "%02x ", (unsigned char) op->arg[0]);
+			if (GET_OP(op) == JIT_DATA_BYTES) {
+				for (int i = 0; i < op->arg[0]; i++)
+					fprintf(f, "%02x ", ((unsigned char *) op->addendum)[i]);
+			}
+			
 			op = op->next;
 		}
 		fprintf(f, "\n");
@@ -738,7 +761,7 @@ static jit_op *print_combined_op(FILE *f, struct jit *jit, struct jit_op *op, ji
 		return op;	
 	}
 
-	if (GET_OP(op) == JIT_COMMENT) {
+	if (opcode == JIT_COMMENT) {
 		fprintf(f, ".comment\n");
 		print_op(f, &jit_disasm_general, op, labels, JIT_DEBUG_LOADS);
 		fprintf(f, "\n");
@@ -749,7 +772,7 @@ static jit_op *print_combined_op(FILE *f, struct jit *jit, struct jit_op *op, ji
 	print_op(f, &jit_disasm_general, op, labels, JIT_DEBUG_LOADS);
 	fprintf(f, "\n");
 
-	switch (GET_OP(op)) {
+	switch (opcode) {
 		case JIT_CODE_ALIGN:
 			if (op->next) {
 				fprintf(f, "\n.nl\n");
