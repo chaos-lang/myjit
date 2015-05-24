@@ -807,12 +807,32 @@ static void emit_transfer_init(struct jit * jit, jit_op * op, jit_value destreg,
 	tinf->block_size = block_size;
 
 	jit_hw_reg * scrap = jit_get_unused_reg_with_index(jit->reg_al, op, 0, 0);
-	tinf->scrapreg = (scrap ? scrap->id : COMMON86_AX);
+	if (scrap) tinf->scrapreg = scrap->id;
+	else {
+		for (int i = 0; i < jit->reg_al->gp_reg_cnt; i++) {
+			jit_hw_reg *r = &jit->reg_al->gp_regs[i];
+			if ((r->id != srcreg) && (r->id != destreg) && (!IS_IMM(op) && (r->id != cnt))) {
+				tinf->scrapreg = r->id;
+				break;
+			}
+		}
+	}
+	//tinf->scrapreg = (scrap ? scrap->id : COMMON86_AX);
 	tinf->scrap_in_use = jit_reg_in_use(op, tinf->scrapreg, 0);
 
 	if (IS_IMM(op)) {
 		jit_hw_reg * counter = jit_get_unused_reg_with_index(jit->reg_al, op, 0, 1);
-		tinf->counterreg = (counter ? counter->id : COMMON86_CX);
+		if (counter) tinf->counterreg = counter->id;
+		else {
+			for (int i = 0; i < jit->reg_al->gp_reg_cnt; i++) {
+				jit_hw_reg *r = &jit->reg_al->gp_regs[i];
+				if ((r->id != srcreg) && (r->id != destreg) && (r->id != tinf->scrapreg)) {
+					tinf->counterreg = r->id;
+					break;
+				}
+			}
+		}
+//		tinf->counterreg = (counter ? counter->id : COMMON86_CX);
 		tinf->counter_in_use = jit_reg_in_use(op, tinf->counterreg, 0);
 	} else {
 		if (jit_set_get(op->live_out, op->arg[2])) {
@@ -825,8 +845,8 @@ static void emit_transfer_init(struct jit * jit, jit_op * op, jit_value destreg,
 		}
 	}
 
-	if (tinf->counter_in_use) common86_mov_membase_reg(jit->ip, COMMON86_SP, REG_SIZE, tinf->counterreg, REG_SIZE);
-	if (tinf->scrap_in_use) common86_mov_membase_reg(jit->ip, COMMON86_SP, REG_SIZE * 2, tinf->scrapreg, REG_SIZE);
+	if (tinf->counter_in_use) common86_mov_membase_reg(jit->ip, COMMON86_SP, -REG_SIZE, tinf->counterreg, REG_SIZE);
+	if (tinf->scrap_in_use) common86_mov_membase_reg(jit->ip, COMMON86_SP, -REG_SIZE * 2, tinf->scrapreg, REG_SIZE);
 
 	if (IS_IMM(op)) common86_mov_reg_imm(jit->ip, tinf->counterreg, cnt * block_size);
 	else if ((tinf->counterreg != cnt) || block_size > 1) {
@@ -857,8 +877,8 @@ static void emit_transfer_loop(struct jit *jit, jit_op *op)
 	common86_alu_reg_imm(jit->ip, X86_SUB, tinf->counterreg, tinf->block_size);
 	common86_branch_disp(jit->ip, X86_CC_NZ, loop - (jit_value) jit->ip, 0);
 
-	if (tinf->counter_in_use) common86_mov_reg_membase(jit->ip, tinf->counterreg, COMMON86_SP, REG_SIZE, REG_SIZE);
-	if (tinf->scrap_in_use) common86_mov_reg_membase(jit->ip, tinf->scrapreg, COMMON86_SP, REG_SIZE * 2, REG_SIZE);
+	if (tinf->counter_in_use) common86_mov_reg_membase(jit->ip, tinf->counterreg, COMMON86_SP, -REG_SIZE, REG_SIZE);
+	if (tinf->scrap_in_use) common86_mov_reg_membase(jit->ip, tinf->scrapreg, COMMON86_SP, -REG_SIZE * 2, REG_SIZE);
 }
 
 static void emit_transfer_op(struct jit *jit, jit_op *op, int alu_op)
@@ -873,9 +893,9 @@ static void emit_transfer_op(struct jit *jit, jit_op *op, int alu_op)
 		common86_alu_reg_memindex(jit->ip, alu_op, tinf->scrapreg, tinf->destreg, -tinf->block_size, tinf->counterreg, 0);
 	} else if (op->r_arg[1] != -1) {
 		if ((op->r_arg[1] == tinf->counterreg) && (tinf->counter_in_use)) {
-			common86_alu_reg_membase(jit->ip, alu_op, tinf->scrapreg, COMMON86_SP, REG_SIZE);
+			common86_alu_reg_membase(jit->ip, alu_op, tinf->scrapreg, COMMON86_SP, -REG_SIZE);
 		} else if ((op->r_arg[1] == tinf->scrapreg) && (tinf->scrap_in_use)) {
-			common86_alu_reg_membase(jit->ip, alu_op, tinf->scrapreg, COMMON86_SP, REG_SIZE * 2);
+			common86_alu_reg_membase(jit->ip, alu_op, tinf->scrapreg, COMMON86_SP, -REG_SIZE * 2);
 		} else common86_alu_reg_reg(jit->ip, alu_op, tinf->scrapreg, op->r_arg[1]);
 	}
 	else common86_alu_reg_membase(jit->ip, alu_op, tinf->scrapreg, COMMON86_BP, GET_REG_POS(jit, op->arg[1]));
@@ -893,7 +913,19 @@ static void emit_memcpy(struct jit * jit, jit_op * op, jit_value a1, jit_value a
 static void emit_memset(struct jit *jit, jit_op *op, jit_value a1, jit_value a2, jit_value a3, int block_size)
 {
 	jit_hw_reg * counter = jit_get_unused_reg_with_index(jit->reg_al, op, 0, 0);
-        int counterreg = (counter ? counter->id : COMMON86_CX);
+	int counterreg = 0;
+	if (counter) counterreg = counter->id;
+	else {
+		// FIXME: duplicitni kod s funkcemi pro transfer
+		for (int i = 0; i < jit->reg_al->gp_reg_cnt; i++) {
+			jit_hw_reg *r = &jit->reg_al->gp_regs[i];
+			if ((r->id != a1) && (r->id != a2) && (!IS_IMM(op) && (r->id != a3))) {
+				counterreg = r->id;
+				break;
+			}
+		}
+	}
+//        int counterreg = (counter ? counter->id : COMMON86_CX);
         int counter_in_use = jit_reg_in_use(op, counterreg, 0);
 	if (counter_in_use) common86_push_reg(jit->ip, counterreg);
 	common86_mov_reg_reg(jit->ip, counterreg, a2, REG_SIZE);

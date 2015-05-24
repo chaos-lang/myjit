@@ -222,7 +222,7 @@ DEFINE_TEST(test20)
 
 DEFINE_TEST(test21)
 {
-#ifdef JIT_ARCH_SPARC
+#ifndef JIT_ARCH_AMD64
 	IGNORE_TEST
 #endif
 	plfv f1;
