@@ -994,6 +994,7 @@ void jit_gen_op(struct jit * jit, struct jit_op * op)
 		case JIT_CALL: 	emit_funcall(jit, op, imm); break;
 		case JIT_PATCH: do {
 					struct jit_op *target = (struct jit_op *) a1;
+					if (!target->in_use) break;
 					switch (GET_OP(target)) {
 						case JIT_REF_CODE: 
 						case JIT_REF_DATA: 
