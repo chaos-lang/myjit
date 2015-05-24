@@ -149,6 +149,7 @@ char * jit_get_op_name(struct jit_op * op)
 		case JIT_ST:	return "st";
 		case JIT_STX:	return "stx";
 		case JIT_MEMCPY:return "memcpy";
+		case JIT_MEMSET:return "memset";
 
 		case JIT_JMP:		return "jmp";
 		case JIT_PATCH:		return ".patch";

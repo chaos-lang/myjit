@@ -145,6 +145,7 @@ typedef enum {
 	JIT_ST		= (0x23 << 3),
 	JIT_STX		= (0x24 << 3),
 	JIT_MEMCPY	= (0x25 << 3),
+	JIT_MEMSET	= (0x26 << 3),
 
 	JIT_JMP 	= (0x30 << 3),
 	JIT_PREPARE 	= (0x31 << 3),
@@ -509,6 +510,9 @@ int jit_allocai(struct jit * jit, int size);
 
 #define jit_memcpyr(jit, a, b, c) jit_add_op(jit, JIT_MEMCPY | REG, SPEC(REG, REG, REG), a, b, c, 0, jit_debug_info_new(__FILE__, __func__, __LINE__))
 #define jit_memcpyi(jit, a, b, c) jit_add_op(jit, JIT_MEMCPY | IMM, SPEC(REG, REG, IMM), a, b, c, 0, jit_debug_info_new(__FILE__, __func__, __LINE__))
+
+#define jit_memsetr(jit, a, b, c, d) jit_add_op(jit, JIT_MEMSET | REG, SPEC(REG, REG, REG), a, b, c, d, jit_debug_info_new(__FILE__, __func__, __LINE__))
+#define jit_memseti(jit, a, b, c, d) jit_add_op(jit, JIT_MEMSET | IMM, SPEC(REG, REG, IMM), a, b, c, d, jit_debug_info_new(__FILE__, __func__, __LINE__))
 
 #define jit_transferr(jit, a, b, c, d) jit_add_op(jit, JIT_TRANSFER | REG, SPEC(REG, REG, REG), a, b, c, d, jit_debug_info_new(__FILE__, __func__, __LINE__))
 #define jit_transferi(jit, a, b, c, d) jit_add_op(jit, JIT_TRANSFER | IMM, SPEC(REG, REG, IMM), a, b, c, d, jit_debug_info_new(__FILE__, __func__, __LINE__))
