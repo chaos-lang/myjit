@@ -94,7 +94,6 @@ static int uses_hw_reg(struct jit_op * op, jit_value reg, int fp)
 
 static int emit_push_callee_saved_regs(struct jit * jit, jit_op * op)
 {
-	int count = 0;
 	int stack_offset = 0;
 	for (int i = 0; i < jit->reg_al->gp_reg_cnt; i++) {
 		jit_hw_reg * r = &(jit->reg_al->gp_regs[i]);
@@ -103,13 +102,13 @@ static int emit_push_callee_saved_regs(struct jit * jit, jit_op * op)
 				if (GET_OP(o) == JIT_PROLOG) break;
 				if (uses_hw_reg(o, r->id, 0)) {
 					stack_offset = emit_push_reg(jit, r, stack_offset);
-					count++;
 					break;
 				}
 			}
 	}
+	stack_offset = jit_value_align(stack_offset, JIT_STACK_ALIGNMENT);
 	if (stack_offset) common86_alu_reg_imm(jit->ip, X86_SUB, COMMON86_SP, stack_offset);
-	return count;
+	return stack_offset / REG_SIZE;
 }
 
 static int emit_pop_callee_saved_regs(struct jit * jit)
@@ -130,11 +129,13 @@ static int emit_pop_callee_saved_regs(struct jit * jit)
 				}
 			}
 	}
-	int stack_offset = 0;
+	int stack_space = jit_value_align(count * REG_SIZE, JIT_STACK_ALIGNMENT);
+	int stack_offset = stack_space - (count * REG_SIZE);
+	
 	for (int i = 0; i < count; i++) {
 		stack_offset = emit_pop_reg(jit, active_regs[i], stack_offset);
 	}
-	if (stack_offset) common86_alu_reg_imm(jit->ip, X86_ADD, COMMON86_SP, stack_offset);
+	if (stack_space) common86_alu_reg_imm(jit->ip, X86_ADD, COMMON86_SP, stack_space);
 	return count;
 }
 
