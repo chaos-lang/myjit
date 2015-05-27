@@ -299,6 +299,7 @@ enum jit_warning {
 #define JIT_OPT_OMIT_FRAME_PTR                  (0x01)
 #define JIT_OPT_OMIT_UNUSED_ASSIGNEMENTS        (0x02)
 #define JIT_OPT_JOIN_ADDMUL                     (0x04)
+#define JIT_OPT_DEAD_CODE			(0x08)
 #define JIT_OPT_ALL                             (0xff)
 
 struct jit * jit_init();

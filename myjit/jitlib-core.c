@@ -88,7 +88,7 @@ struct jit * jit_init()
 	r->buf = NULL;
 	r->labels = NULL;
 	r->reg_al = jit_reg_allocator_create();
-	jit_enable_optimization(r, JIT_OPT_JOIN_ADDMUL | JIT_OPT_OMIT_FRAME_PTR);
+	jit_enable_optimization(r, JIT_OPT_JOIN_ADDMUL | JIT_OPT_OMIT_FRAME_PTR | JIT_OPT_DEAD_CODE);
 
 	return r;
 }
@@ -364,7 +364,9 @@ void jit_generate_code(struct jit * jit)
 	jit_prepare_arguments(jit);
 	jit_prepare_spills_on_jmpr_targets(jit);
 
-	jit_dead_code_analysis(jit, 1);	
+	if (jit->optimizations & JIT_OPT_DEAD_CODE) {
+		jit_dead_code_analysis(jit, 1);
+	}
 	jit_flw_analysis(jit);
 
 
