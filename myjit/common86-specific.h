@@ -589,14 +589,16 @@ static void emit_div_op(struct jit * jit, struct jit_op * op, int imm, int sign,
 				case 4: common86_shift_reg_imm(jit->ip, sign ? X86_SAR : X86_SHR, dest, 2); break;
 				case 8: common86_shift_reg_imm(jit->ip, sign ? X86_SAR : X86_SHR, dest, 3); break;
 			}
-		} else {
+			return;
+		}
+		if (modulo && !sign) {
 			switch (divisor) {
 				case 2: common86_alu_reg_imm(jit->ip, X86_AND, dest, 0x1); break;
 				case 4: common86_alu_reg_imm(jit->ip, X86_AND, dest, 0x3); break;
 				case 8: common86_alu_reg_imm(jit->ip, X86_AND, dest, 0x7); break;
 			}
+			return;
 		}
-		return;
 	}
 
 	int ax_in_use = jit_reg_in_use(op, COMMON86_AX, 0);
