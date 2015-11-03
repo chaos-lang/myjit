@@ -212,6 +212,7 @@ static struct jit_op * jit_op_new(unsigned short code, unsigned char spec, long 
 	r->r_arg[2] = -1;
 
 	r->assigned = 0;
+	r->in_use = 1;
 	r->arg_size = arg_size;
 	r->next = NULL;
 	r->prev = NULL;

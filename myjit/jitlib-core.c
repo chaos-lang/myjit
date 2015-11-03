@@ -390,9 +390,6 @@ void jit_generate_code(struct jit * jit)
 	if (jit->optimizations & JIT_OPT_OMIT_FRAME_PTR) jit_optimize_frame_ptr(jit);
 #endif
 
-	for (jit_op * op = jit_op_first(jit->ops); op != NULL; op = op->next)
-		op->in_use = 1; // some new operations may not be marked as in use
-
 	jit->buf_capacity = BUF_SIZE;
 	jit->buf = JIT_MALLOC(jit->buf_capacity);
 	jit->ip = jit->buf;
