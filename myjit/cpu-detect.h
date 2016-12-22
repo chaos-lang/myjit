@@ -32,8 +32,12 @@
 	#ifdef __sparc__
 		#define JIT_ARCH_SPARC
 	#else
-		#define JIT_ARCH_AMD64
-		#define JIT_ARCH_COMMON86
+		#ifdef __arm__
+			#define JIT_ARCH_ARM32
+		#else
+			#define JIT_ARCH_AMD64
+			#define JIT_ARCH_COMMON86
+		#endif
 	#endif
 #endif
 
@@ -74,9 +78,17 @@
  */
 #ifdef JIT_ARCH_SPARC
 // maximum size of value (in bits) that can be used as an immediate value without the ``sign bit''
-// (i386 does not need to transform large immediates values)
 #define JIT_IMM_BITS	(12)
 #endif
+
+/*
+ * ARM32 related macros
+ */
+#ifdef JIT_ARCH_ARM32
+// maximum size of value (in bits) that can be used as an immediate value without the ``sign bit''
+#define JIT_IMM_BITS	(11)
+#endif
+
 
 
 

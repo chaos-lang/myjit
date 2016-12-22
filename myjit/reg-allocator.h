@@ -138,6 +138,12 @@ static void assign_regs_for_args(struct jit_reg_allocator * al, jit_op * op)
 }
 #endif
 
+#ifdef JIT_ARCH_ARM32
+static void assign_regs_for_args(struct jit_reg_allocator * al, jit_op * op)
+{
+}
+#endif
+
 static void prepare_registers_for_call(struct jit_reg_allocator * al, jit_op * op)
 {
 	jit_value r, reg;

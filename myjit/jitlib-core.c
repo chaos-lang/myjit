@@ -37,6 +37,11 @@
 #include "sparc-specific.h"
 #endif
 
+
+#ifdef JIT_ARCH_ARM32
+#include "arm32-specific.h"
+#endif
+
 #include "jitlib-debug.c"
 #include "code-check.c"
 #include "flow-analysis.h"
