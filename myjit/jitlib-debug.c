@@ -1,6 +1,6 @@
 /*
  * MyJIT 
- * Copyright (C) 2010, 2015 Petr Krajca, <petr.krajca@upol.cz>
+ * Copyright (C) 2010, 2015, 2017 Petr Krajca, <petr.krajca@upol.cz>
  *
  * This library is free software; you can redistribute it and/or
  * modify it under the terms of the GNU Lesser General Public
@@ -53,7 +53,11 @@ static void compiler_based_debugger(struct jit * jit)
 
 #ifndef __APPLE_CC__
 	char * cmd1_fmt = "gcc -x assembler -c -o %s -";
+	#ifdef JIT_ARCH_ARM32
+	char * cmd2_fmt = "objdump -d %s";
+	#else
 	char * cmd2_fmt = "objdump -d -M intel %s";
+	#endif
 #else
 	char * cmd1_fmt = "cc -x assembler -c -o %s -";
 	char * cmd2_fmt = "otool -tvVj %s";
@@ -68,7 +72,11 @@ static void compiler_based_debugger(struct jit * jit)
 
 	int size = jit->ip - jit->buf;
 #ifndef __APPLE_CC__
+	#ifndef JIT_ARCH_ARM32
 	fprintf (f, ".text\n.align 4\n.globl main\n.type main,@function\nmain:\n");
+	#else
+	fprintf (f, ".text\n.globl main\n.type main,STT_FUNC\nmain:\n");
+	#endif
 	for (int i = 0; i < size; i++)
 		fprintf(f, ".byte %d\n", (unsigned int) jit->buf[i]);
 #else
