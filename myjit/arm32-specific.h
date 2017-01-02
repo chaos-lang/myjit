@@ -18,6 +18,7 @@
  */
 
 #include "arm32-codegen.h"
+#include "arm32-codegen.hh"
 #include "x86-common-stuff.c"
 
 #define JIT_GET_ADDR(jit, imm) (!jit_is_label(jit, (void *)(imm)) ? (imm) :  \
@@ -776,7 +777,9 @@ void jit_gen_op(struct jit * jit, struct jit_op * op)
 //			if (IS_IMM(op)) sparc_set32(jit->ip, a1, sparc_i0);
 //			sparc_ret(jit->ip);
 //			sparc_restore_imm(jit->ip, sparc_g0, 0, sparc_g0);
-			ARM_BX(jit->ip, ARMREG_LR);
+//			ARM_BX(jit->ip, ARMREG_LR);
+//			arm32_mov_reg_reg(jit->ip, ARMREG_PC, ARMREG_LR);
+			arm32_bx(jit->ip, ARMCOND_AL, ARMREG_LR);
 			break;
 /*
 		case JIT_PUTARG: funcall_put_arg(jit, op); break;
@@ -838,8 +841,11 @@ op_complete:
 				jit->current_func = op;
 				struct jit_func_info * info = jit_current_func_info(jit);
 				//ARM_DPIOP_S_REG_REG_COND(jit->ip, ARMOP_EOR, ARMREG_R0, ARMREG_R0, ARMREG_R0, ARMCOND_AL);
-				ARM_MVN_REG_IMM8(jit->ip, ARMREG_R0, 120);
-				ARM_INC(jit->ip, ARMREG_R0);
+				ARM_MOV_REG_IMM8(jit->ip, ARMREG_R0, 42);
+				ARM_MOV_REG_IMM8(jit->ip, ARMREG_R1, 2);
+				arm32_mov_reg_reg(jit->ip, ARMREG_R0, ARMREG_R1);
+				arm32_alu_reg_reg(jit->ip, ARMOP_ADD, ARMREG_R0, ARMREG_R0, ARMREG_R1);
+//				ARM_INC(jit->ip, ARMREG_R0);
 
 
 /*
