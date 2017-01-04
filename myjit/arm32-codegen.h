@@ -24,150 +24,151 @@
  * Copyright 2011 Xamarin Inc
  */
 
-//typedef enum {
-//	ARMREG_R0 = 0,
-//	ARMREG_R1,
-//	ARMREG_R2,
-//	ARMREG_R3,
-//	ARMREG_R4,
-//	ARMREG_R5,
-//	ARMREG_R6,
-//	ARMREG_R7,
-//	ARMREG_R8,
-//	ARMREG_R9,
-//	ARMREG_R10,
-//	ARMREG_R11,
-//	ARMREG_R12,
-//	ARMREG_R13,
-//	ARMREG_R14,
-//	ARMREG_R15,
-//
-//
-//	/* aliases */
-//	/* args */
-//	ARMREG_A1 = ARMREG_R0,
-//	ARMREG_A2 = ARMREG_R1,
-//	ARMREG_A3 = ARMREG_R2,
-//	ARMREG_A4 = ARMREG_R3,
-//
-//	/* local vars */
-//	ARMREG_V1 = ARMREG_R4,
-//	ARMREG_V2 = ARMREG_R5,
-//	ARMREG_V3 = ARMREG_R6,
-//	ARMREG_V4 = ARMREG_R7,
-//	ARMREG_V5 = ARMREG_R8,
-//	ARMREG_V6 = ARMREG_R9,
-//	ARMREG_V7 = ARMREG_R10,
-//
-//	ARMREG_FP = ARMREG_R11,
-//	ARMREG_IP = ARMREG_R12,
-//	ARMREG_SP = ARMREG_R13,
-//	ARMREG_LR = ARMREG_R14,
-//	ARMREG_PC = ARMREG_R15,
-//
-//	/* co-processor */
-//	ARMREG_CR0 = 0,
-//	ARMREG_CR1,
-//	ARMREG_CR2,
-//	ARMREG_CR3,
-//	ARMREG_CR4,
-//	ARMREG_CR5,
-//	ARMREG_CR6,
-//	ARMREG_CR7,
-//	ARMREG_CR8,
-//	ARMREG_CR9,
-//	ARMREG_CR10,
-//	ARMREG_CR11,
-//	ARMREG_CR12,
-//	ARMREG_CR13,
-//	ARMREG_CR14,
-//	ARMREG_CR15,
-//
-//	/* XScale: acc0 on CP0 */
-//	ARMREG_ACC0 = ARMREG_CR0,
-//
-//	ARMREG_MAX = ARMREG_R15
-//} ARMReg;
-//
-//typedef enum {
-//	ARMCOND_EQ = 0x0,          /* Equal; Z = 1 */
-//	ARMCOND_NE = 0x1,          /* Not equal, or unordered; Z = 0 */
-//	ARMCOND_CS = 0x2,          /* Carry set; C = 1 */
-//	ARMCOND_HS = ARMCOND_CS,   /* Unsigned higher or same; */
-//	ARMCOND_CC = 0x3,          /* Carry clear; C = 0 */
-//	ARMCOND_LO = ARMCOND_CC,   /* Unsigned lower */
-//	ARMCOND_MI = 0x4,          /* Negative; N = 1 */
-//	ARMCOND_PL = 0x5,          /* Positive or zero; N = 0 */
-//	ARMCOND_VS = 0x6,          /* Overflow; V = 1 */
-//	ARMCOND_VC = 0x7,          /* No overflow; V = 0 */
-//	ARMCOND_HI = 0x8,          /* Unsigned higher; C = 1 && Z = 0 */
-//	ARMCOND_LS = 0x9,          /* Unsigned lower or same; C = 0 || Z = 1 */
-//	ARMCOND_GE = 0xA,          /* Signed greater than or equal; N = V */
-//	ARMCOND_LT = 0xB,          /* Signed less than; N != V */
-//	ARMCOND_GT = 0xC,          /* Signed greater than; Z = 0 && N = V */
-//	ARMCOND_LE = 0xD,          /* Signed less than or equal; Z = 1 && N != V */
-//	ARMCOND_AL = 0xE,          /* Always */
-//	ARMCOND_NV = 0xF,          /* Never */
-//
-//	ARMCOND_SHIFT = 28
-//} ARMCond;
-//
-//typedef enum {
-//	ARMSHIFT_LSL = 0,
-//	ARMSHIFT_LSR = 1,
-//	ARMSHIFT_ASR = 2,
-//	ARMSHIFT_ROR = 3,
-//
-//	ARMSHIFT_ASL = ARMSHIFT_LSL
-//	/* rrx = (ror, 1) */
-//} ARMShiftType;
-//
-//
-//typedef struct {
-//	armword_t PSR_c : 8;
-//	armword_t PSR_x : 8;
-//	armword_t PSR_s : 8;
-//	armword_t PSR_f : 8;
-//} ARMPSR;
-//
-//typedef enum {
-//	ARMOP_AND = 0x0,
-//	ARMOP_EOR = 0x1,
-//	ARMOP_SUB = 0x2,
-//	ARMOP_RSB = 0x3,
-//	ARMOP_ADD = 0x4,
-//	ARMOP_ADC = 0x5,
-//	ARMOP_SBC = 0x6,
-//	ARMOP_RSC = 0x7,
-//	ARMOP_TST = 0x8,
-//	ARMOP_TEQ = 0x9,
-//	ARMOP_CMP = 0xa,
-//	ARMOP_CMN = 0xb,
-//	ARMOP_ORR = 0xc,
-//	ARMOP_MOV = 0xd,
-//	ARMOP_BIC = 0xe,
-//	ARMOP_MVN = 0xf,
-//
-//
-//	/* not really opcodes */
-//
-//	ARMOP_STR = 0x0,
-//	ARMOP_LDR = 0x1,
-//
-//	/* ARM2+ */
-//	ARMOP_MUL   = 0x0, /* Rd := Rm*Rs */
-//	ARMOP_MLA   = 0x1, /* Rd := (Rm*Rs)+Rn */
-//
-//	/* ARM3M+ */
-//	ARMOP_UMULL = 0x4,
-//	ARMOP_UMLAL = 0x5,
-//	ARMOP_SMULL = 0x6,
-//	ARMOP_SMLAL = 0x7,
-//
-//	/* for data transfers with register offset */
-//	ARM_UP   = 1,
-//	ARM_DOWN = 0
-//} ARMOpcode;
+typedef enum {
+	ARMREG_R0 = 0,
+	ARMREG_R1,
+	ARMREG_R2,
+	ARMREG_R3,
+	ARMREG_R4,
+	ARMREG_R5,
+	ARMREG_R6,
+	ARMREG_R7,
+	ARMREG_R8,
+	ARMREG_R9,
+	ARMREG_R10,
+	ARMREG_R11,
+	ARMREG_R12,
+	ARMREG_R13,
+	ARMREG_R14,
+	ARMREG_R15,
+
+
+	/* aliases */
+	/* args */
+	ARMREG_A1 = ARMREG_R0,
+	ARMREG_A2 = ARMREG_R1,
+	ARMREG_A3 = ARMREG_R2,
+	ARMREG_A4 = ARMREG_R3,
+
+	/* local vars */
+	ARMREG_V1 = ARMREG_R4,
+	ARMREG_V2 = ARMREG_R5,
+	ARMREG_V3 = ARMREG_R6,
+	ARMREG_V4 = ARMREG_R7,
+	ARMREG_V5 = ARMREG_R8,
+	ARMREG_V6 = ARMREG_R9,
+	ARMREG_V7 = ARMREG_R10,
+
+	ARMREG_FP = ARMREG_R11,
+	ARMREG_IP = ARMREG_R12,
+	ARMREG_SP = ARMREG_R13,
+	ARMREG_LR = ARMREG_R14,
+	ARMREG_PC = ARMREG_R15,
+
+	/* co-processor */
+	ARMREG_CR0 = 0,
+	ARMREG_CR1,
+	ARMREG_CR2,
+	ARMREG_CR3,
+	ARMREG_CR4,
+	ARMREG_CR5,
+	ARMREG_CR6,
+	ARMREG_CR7,
+	ARMREG_CR8,
+	ARMREG_CR9,
+	ARMREG_CR10,
+	ARMREG_CR11,
+	ARMREG_CR12,
+	ARMREG_CR13,
+	ARMREG_CR14,
+	ARMREG_CR15,
+
+	/* XScale: acc0 on CP0 */
+	ARMREG_ACC0 = ARMREG_CR0,
+
+	ARMREG_MAX = ARMREG_R15
+} ARMReg;
+
+typedef enum {
+	ARMCOND_EQ = 0x0,          /* Equal; Z = 1 */
+	ARMCOND_NE = 0x1,          /* Not equal, or unordered; Z = 0 */
+	ARMCOND_CS = 0x2,          /* Carry set; C = 1 */
+	ARMCOND_HS = ARMCOND_CS,   /* Unsigned higher or same; */
+	ARMCOND_CC = 0x3,          /* Carry clear; C = 0 */
+	ARMCOND_LO = ARMCOND_CC,   /* Unsigned lower */
+	ARMCOND_MI = 0x4,          /* Negative; N = 1 */
+	ARMCOND_PL = 0x5,          /* Positive or zero; N = 0 */
+	ARMCOND_VS = 0x6,          /* Overflow; V = 1 */
+	ARMCOND_VC = 0x7,          /* No overflow; V = 0 */
+	ARMCOND_HI = 0x8,          /* Unsigned higher; C = 1 && Z = 0 */
+	ARMCOND_LS = 0x9,          /* Unsigned lower or same; C = 0 || Z = 1 */
+	ARMCOND_GE = 0xA,          /* Signed greater than or equal; N = V */
+	ARMCOND_LT = 0xB,          /* Signed less than; N != V */
+	ARMCOND_GT = 0xC,          /* Signed greater than; Z = 0 && N = V */
+	ARMCOND_LE = 0xD,          /* Signed less than or equal; Z = 1 && N != V */
+	ARMCOND_AL = 0xE,          /* Always */
+	ARMCOND_NV = 0xF,          /* Never */
+
+	ARMCOND_SHIFT = 28
+} ARMCond;
+
+typedef enum {
+	ARMSHIFT_LSL = 0,
+	ARMSHIFT_LSR = 1,
+	ARMSHIFT_ASR = 2,
+	ARMSHIFT_ROR = 3,
+
+	ARMSHIFT_ASL = ARMSHIFT_LSL
+	/* rrx = (ror, 1) */
+} ARMShiftType;
+
+/*
+typedef struct {
+	armword_t PSR_c : 8;
+	armword_t PSR_x : 8;
+	armword_t PSR_s : 8;
+	armword_t PSR_f : 8;
+} ARMPSR;
+*/
+
+typedef enum {
+	ARMOP_AND = 0x0,
+	ARMOP_EOR = 0x1,
+	ARMOP_SUB = 0x2,
+	ARMOP_RSB = 0x3,
+	ARMOP_ADD = 0x4,
+	ARMOP_ADC = 0x5,
+	ARMOP_SBC = 0x6,
+	ARMOP_RSC = 0x7,
+	ARMOP_TST = 0x8,
+	ARMOP_TEQ = 0x9,
+	ARMOP_CMP = 0xa,
+	ARMOP_CMN = 0xb,
+	ARMOP_ORR = 0xc,
+	ARMOP_MOV = 0xd,
+	ARMOP_BIC = 0xe,
+	ARMOP_MVN = 0xf,
+
+
+	/* not really opcodes */
+
+	ARMOP_STR = 0x0,
+	ARMOP_LDR = 0x1,
+
+	/* ARM2+ */
+	ARMOP_MUL   = 0x0, /* Rd := Rm*Rs */
+	ARMOP_MLA   = 0x1, /* Rd := (Rm*Rs)+Rn */
+
+	/* ARM3M+ */
+	ARMOP_UMULL = 0x4,
+	ARMOP_UMLAL = 0x5,
+	ARMOP_SMULL = 0x6,
+	ARMOP_SMLAL = 0x7,
+
+	/* for data transfers with register offset */
+	ARM_UP   = 1,
+	ARM_DOWN = 0
+} ARMOpcode;
 
 #define arm32_emit(ins, op) \
 	*((unsigned int *)(ins)) = op; \
@@ -182,7 +183,7 @@
 		op |= _s << 20; \
 		op |= _rn << 16; \
 		op |= _rd << 12; \
-		op |= _op2; \
+		op |= (_op2 & 0xfff); \
 		arm32_emit(ins, op); \
 	} while (0)
 
@@ -203,12 +204,83 @@
 		op |= 0x12fff1 << 4; \
 		op |= _rn;\
 		arm32_emit(ins, op); \
+	} while (0)
+
+#define arm32_cond_movw_reg_imm16(ins, _cond, _rd, _imm) \
+	do { \
+		unsigned int op = 0; \
+		op |= _cond << 28; \
+		op |= 0x30 << 20; \
+		op |= (_imm & 0xf000) << 4; \
+		op |= _rd << 12; \
+		op |= _imm & 0xfff; \
+		arm32_emit(ins, op); \
+	} while (0)
+
+#define arm32_cond_movt_reg_imm16(ins, _cond, _rd, _imm) \
+	do { \
+		unsigned int op = 0; \
+		op |= _cond << 28; \
+		op |= 0x34 << 20; \
+		op |= (_imm & 0xf000) << 4; \
+		op |= _rd << 12; \
+		op |= _imm & 0xfff; \
+		arm32_emit(ins, op); \
+	} while (0)
+
+#define arm32_cond_mov_reg_imm32(ins, _cond, _rd, _imm) \
+	do { \
+		if ((_imm) & 0xffff) arm32_cond_movw_reg_imm16(ins, _cond, _rd, (_imm) & 0xffff); \
+		if ((_imm) & 0xffff0000) arm32_cond_movt_reg_imm16(ins, _cond, _rd, ((unsigned int) (_imm)) >> 16 & 0xffff); \
+		if (!(_imm)) arm32_cond_movw_reg_imm16(ins, _cond, _rd, 0); \
 	} while (0);
-	
+
+
+#define arm32_mov_reg_imm32(ins, _rd, _imm) \
+	arm32_cond_mov_reg_imm32(ins, ARMCOND_AL, _rd, _imm)
 	
 #define arm32_alu_reg_reg(ins, _opcode, _rd, _rn, _rm) \
 	arm32_encode_dataop(ins, ARMCOND_AL, 0, _opcode, 0, _rd, _rn, _rm);
 
+#define arm32_alucc_reg_reg(ins, _opcode, _cc, _rd, _rn, _rm) \
+	arm32_encode_dataop(ins, ARMCOND_AL, 0, _opcode, _cc, _rd, _rn, _rm);
+
 #define arm32_mov_reg_reg(ins, _rd, _rm) \
 	arm32_alu_reg_reg(ins, ARMOP_MOV, _rd, 0, _rm);
 
+#define arm32_pushall(ins) \
+	do { \
+		unsigned int op = 0; \
+		op |= ARMCOND_AL << 28; \
+		op |= 0x92d << 16; \
+		op |= 0xfff; \
+		arm32_emit(ins, op); \
+	} while (0)
+
+#define arm32_popall(ins) \
+	do { \
+		unsigned int op = 0; \
+		op |= ARMCOND_AL << 28; \
+		op |= 0x8bd << 16; \
+		op |= 0xfff; \
+		arm32_emit(ins, op); \
+	} while (0)
+
+#define arm32_pushall_but_r0(ins) \
+	do { \
+		unsigned int op = 0; \
+		op |= ARMCOND_AL << 28; \
+		op |= 0x92d << 16; \
+		op |= 0xffe; \
+		arm32_emit(ins, op); \
+	} while (0)
+
+
+#define arm32_popall_but_r0(ins) \
+	do { \
+		unsigned int op = 0; \
+		op |= ARMCOND_AL << 28; \
+		op |= 0x8bd << 16; \
+		op |= 0xffe; \
+		arm32_emit(ins, op); \
+	} while (0)

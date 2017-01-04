@@ -86,7 +86,7 @@
  */
 #ifdef JIT_ARCH_ARM32
 // maximum size of value (in bits) that can be used as an immediate value without the ``sign bit''
-#define JIT_IMM_BITS	(11)
+#define JIT_IMM_BITS	(8)
 #endif
 
 

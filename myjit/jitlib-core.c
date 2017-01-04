@@ -130,6 +130,7 @@ jit_label * jit_get_label(struct jit * jit)
  */
 static int jit_imm_overflow(struct jit * jit, int signed_op, long value)
 {
+#ifndef JIT_ARCH_ARM32
 	unsigned long mask = ~((1UL << JIT_IMM_BITS) - 1);
 	unsigned long high_bits = value & mask;
 
@@ -139,6 +140,9 @@ static int jit_imm_overflow(struct jit * jit, int signed_op, long value)
 		if (high_bits != 0) return 1;
 	}
 	return 0;
+#else
+	return 1;
+#endif
 }
 
 /**
