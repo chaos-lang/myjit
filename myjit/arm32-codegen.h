@@ -24,6 +24,10 @@
  * Copyright 2011 Xamarin Inc
  */
 
+#define is_imm8(x) (((x) & ~0xff) == 0)
+#define ror(x, shift) ((((unsigned int) (x)) >> (shift)) | ((unsigned int) (x) << (32 - (shift))))
+#define rol(x, shift) ((((unsigned int) (x)) << (shift)) | ((unsigned int) (x) >> (32 - (shift))))
+
 typedef enum {
 	ARMREG_R0 = 0,
 	ARMREG_R1,
@@ -170,9 +174,32 @@ typedef enum {
 	ARM_DOWN = 0
 } ARMOpcode;
 
+/**
+ * Returns even number of bits necessary to rotate to the left
+ * to obtain a imm8 value. If no such value exists, returns -1.
+ * This value can be used along with the ROR-feature of data operations.
+ */
+static inline int arm32_imm_rotate(int x)
+{
+	if (is_imm8(x)) return 0;
+	for (int i = 2; i < 32; i += 2) {
+		x = rol(x, 2);
+		if (is_imm8(x)) return i;
+	}
+	return -1;
+}
+
+static inline int arm32_encode_imm(int x)
+{
+	int r = arm32_imm_rotate(x);
+	if (r == -1) abort();
+	return (r << 8) | ((((unsigned int)x) >> r) & 0xff);
+}
+
 #define arm32_emit(ins, op) \
 	*((unsigned int *)(ins)) = op; \
 	(ins) = (unsigned char *)((unsigned int*)(ins) + 1);
+
 
 #define arm32_encode_dataop(ins, _cond, _imm, _opcode, _s, _rd, _rn, _op2) \
 	do { \
@@ -242,8 +269,14 @@ typedef enum {
 #define arm32_alu_reg_reg(ins, _opcode, _rd, _rn, _rm) \
 	arm32_encode_dataop(ins, ARMCOND_AL, 0, _opcode, 0, _rd, _rn, _rm);
 
+#define arm32_alu_reg_imm(ins, _opcode, _rd, _rn, _imm) \
+	arm32_encode_dataop(ins, ARMCOND_AL, 1, _opcode, 0, _rd, _rn, arm32_encode_imm(_imm));
+
 #define arm32_alucc_reg_reg(ins, _opcode, _cc, _rd, _rn, _rm) \
 	arm32_encode_dataop(ins, ARMCOND_AL, 0, _opcode, _cc, _rd, _rn, _rm);
+
+#define arm32_alucc_reg_imm(ins, _opcode, _cc, _rd, _rn, _imm) \
+	arm32_encode_dataop(ins, ARMCOND_AL, 1, _opcode, _cc, _rd, _rn, arm32_encode_imm(_imm));
 
 #define arm32_mov_reg_reg(ins, _rd, _rm) \
 	arm32_alu_reg_reg(ins, ARMOP_MOV, _rd, 0, _rm);
@@ -284,3 +317,28 @@ typedef enum {
 		op |= 0xffe; \
 		arm32_emit(ins, op); \
 	} while (0)
+
+#define arm32_ldr(ins, _imm, rd, rn, op2) \
+	do { \
+		unsigned int op = 0; \
+		op |= ARMCOND_AL << 28; \
+		op |= 0x1 << 26; \
+		op |= ((~(_imm)) & 0x01) << 25; /* imm */ \
+		op |= 0x1 << 24; /* post/pref index */ \
+		op |= 0x1 << 23; /* rn + rm */ \
+		op |= 0x0 << 22; /* word */ \
+		op |= 0x0 << 21; /* write */ \
+		op |= 0x1 << 20; /* load */ \
+		op |= rn << 16; \
+		op |= rd << 12; \
+		op |= op2; \
+		arm32_emit(ins, op);\
+	} \
+	while (0)
+
+#define arm32_ldr_reg(ins, rd, rn, rm) \
+	arm32_ldr(ins, 0, rd, rn, rm)
+
+#define arm32_ldr_imm(ins, rd, rn, imm) \
+	arm32_ldr(ins, 1, rd, rn, arm32_encode_imm(imm))
+

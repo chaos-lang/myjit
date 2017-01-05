@@ -94,7 +94,7 @@ t501: t501-flow-analysis-stress-test.c jitlib-core.o tests.h
 	$(CC) $(CFLAGS) -o t501 t501-flow-analysis-stress-test.c jitlib-core.o
 
 
-jitlib-core.o: ../myjit/jitlib.h ../myjit/jitlib-core.h ../myjit/jitlib-core.c ../myjit/jitlib-debug.c ../myjit/x86-codegen.h ../myjit/x86-specific.h ../myjit/reg-allocator.h ../myjit/flow-analysis.h ../myjit/set.h ../myjit/amd64-specific.h ../myjit/amd64-codegen.h ../myjit/llrb.c ../myjit/reg-allocator.h ../myjit/rmap.h 
+jitlib-core.o: ../myjit/jitlib.h ../myjit/jitlib-core.h ../myjit/jitlib-core.c ../myjit/jitlib-debug.c ../myjit/x86-codegen.h ../myjit/x86-specific.h ../myjit/reg-allocator.h ../myjit/flow-analysis.h ../myjit/set.h ../myjit/amd64-specific.h ../myjit/amd64-codegen.h ../myjit/arm32-specific.h ../myjit/arm32-codegen.h ../myjit/llrb.c ../myjit/reg-allocator.h ../myjit/rmap.h 
 	$(CC) -c $(CFLAGS) ../myjit/jitlib-core.c
 
 

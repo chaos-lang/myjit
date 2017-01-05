@@ -141,7 +141,7 @@ static int jit_imm_overflow(struct jit * jit, int signed_op, long value)
 	}
 	return 0;
 #else
-	return 1;
+	return arm32_imm_rotate(value) == -1;
 #endif
 }
 

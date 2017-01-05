@@ -20,6 +20,25 @@
 #include "arm32-codegen.h"
 #include "x86-common-stuff.c"
 
+/* Stack frame organization:
+ *
+ *          +-----------------+
+ *          | remaining args. |
+ *          +-----------------+
+ *          | saved regs.     |
+ * FP       +-----------------+
+ *          | allocai mem     |
+ * FP  - n  +-----------------+
+ *          | GP registers    |
+ * FP  - m  +-----------------+
+ *          | FP registers    |
+ * FP  - k  +-----------------+
+ *          | shadow space    |
+ *          | for arg. regs   |
+ * FP - l   +-----------------+
+ */
+
+
 #define JIT_GET_ADDR(jit, imm) (!jit_is_label(jit, (void *)(imm)) ? (imm) :  \
 		((((long)jit->buf + (long)((jit_label *)(imm))->pos - (long)jit->ip)) / 4))
 
@@ -43,25 +62,6 @@ static inline int GET_REG_POS(struct jit * jit, int r)
 		return a->spill_pos;
 	}
 	assert(0);
-}
-
-static inline int space_for_outgoing_args(struct jit *jit, jit_op *op) {
-/*
-	int passed_gp_args = 0;
-	int passed_fp_args = 0;
-	op = op->next;
-	while (op && (GET_OP(op) != JIT_PROLOG)) {
-		if (GET_OP(op) == JIT_PREPARE) {
-			passed_gp_args = MAX(passed_gp_args, op->arg[0]);
-			passed_fp_args = MAX(passed_fp_args, op->arg[1]);
-		}
-		op = op->next;
-	}
-	int stack_gp_args = MAX(0, passed_gp_args - jit->reg_al->gp_arg_reg_cnt);
-	int stack_fp_args = MAX(0, passed_fp_args - jit->reg_al->fp_arg_reg_cnt);
-	return stack_gp_args * REG_SIZE + stack_fp_args * sizeof(double);
-*/
-	return -1;
 }
 
 int jit_allocai(struct jit * jit, int size)
@@ -591,9 +591,11 @@ static inline void emit_ureg(struct jit * jit, long vreg, long hreg_id)
 	} else reg_op(jit->ip, cc, a2, a3, a1); \
 	break;
 */
-// FIXME: immediate values
-#define emit_alu_op(cc, op) \
-	arm32_alucc_reg_reg(jit->ip, op, cc, a1, a2, a3);
+#define emit_alu_op(cc, arm_op) \
+	do {\
+		if (IS_IMM(op)) { arm32_alucc_reg_imm(jit->ip, arm_op, cc, a1, a2, a3); }\
+		else { arm32_alucc_reg_reg(jit->ip, arm_op, cc, a1, a2, a3); } \
+	} while (0)
 
 void jit_gen_op(struct jit * jit, struct jit_op * op)
 {
@@ -610,18 +612,9 @@ void jit_gen_op(struct jit * jit, struct jit_op * op)
 		case JIT_SUBC: emit_alu_op(1, ARMOP_SUB); break;
 		// FIXME: should set carry flag
 		case JIT_SUBX: emit_alu_op(0, ARMOP_SBC); break;
+		case JIT_RSB: emit_alu_op(0, ARMOP_RSB); break;
+		case JIT_NEG: arm32_alu_reg_imm(jit->ip, ARMOP_RSB, a1, a2, 0); break;
 /*
-		case JIT_RSB: 
-			if (IS_IMM(op)) {
-				sparc_set32(jit->ip, a3, sparc_g1);
-				sparc_sub(jit->ip, FALSE, sparc_g1, a2, a1);
-			} else sparc_sub(jit->ip, FALSE, a3, a2, a1);
-			break;
-
-		case JIT_NEG: if (a1 != a2) sparc_mov_reg_reg(jit->ip, a2, a1);
-			      sparc_neg(jit->ip, a1); 
-			      break;
-
 		case JIT_NOT: if (a1 != a2) sparc_mov_reg_reg(jit->ip, a2, a1);
 			      sparc_not(jit->ip, a1); 
 			      break;
@@ -833,6 +826,7 @@ void jit_gen_op(struct jit * jit, struct jit_op * op)
 			emit_memcpy(jit, op, a1, a2, a3);
 			break;
 
+*/
 
 		 // platform independent opcodes handled in the jitlib-core.c
 		case JIT_DATA_BYTE: break;
@@ -840,11 +834,9 @@ void jit_gen_op(struct jit * jit, struct jit_op * op)
 
 		default: found = 0;
 	}
-
 op_complete:
 	if (found) return;
-*/
-}
+
 	switch (op->code) {
 		case (JIT_MOV | REG): if (a1 != a2) arm32_mov_reg_reg(jit->ip, a1, a2); break;
 		case (JIT_MOV | IMM): arm32_mov_reg_imm32(jit->ip, a1, a2); break;
@@ -853,110 +845,89 @@ op_complete:
 			do {
 				jit->current_func = op;
 				struct jit_func_info * info = jit_current_func_info(jit);
-				//ARM_DPIOP_S_REG_REG_COND(jit->ip, ARMOP_EOR, ARMREG_R0, ARMREG_R0, ARMREG_R0, ARMCOND_AL);
-			//	ARM_MOV_REG_IMM8(jit->ip, ARMREG_R0, 42);
-			//	ARM_MOV_REG_IMM8(jit->ip, ARMREG_R1, 2);
-//				arm32_cond_movw_reg_imm16(jit->ip, ARMCOND_AL, ARMREG_R1, 0xabcd);
-//				arm32_cond_movt_reg_imm16(jit->ip, ARMCOND_AL, ARMREG_R1, 0xabcd);
-//				arm32_cond_movt_imm16(jit->ip, ARMCOND_AL, ARMREG_R1, 0xa0b0c0d0e);
-				arm32_pushall_but_r0(jit->ip);
-//				arm32_mov_reg_imm32(jit->ip, ARMREG_R1, 0xa0000000);
-				//arm32_cond_mov_reg_imm32(jit->ip, ARMCOND_AL, ARMREG_R1, 0xa0b0c0d0);
-//				arm32_mov_reg_reg(jit->ip, ARMREG_R0, ARMREG_R1);
-//				arm32_alu_reg_reg(jit->ip, ARMOP_ADD, ARMREG_R0, ARMREG_R0, ARMREG_R1);
-//				ARM_INC(jit->ip, ARMREG_R0);
-
-
-/*
-				int stack_mem = 96;
+				int stack_mem = 11 * 4;
 
 				op->patch_addr = JIT_BUFFER_OFFSET(jit);
 				stack_mem += info->allocai_mem;
 				stack_mem += info->gp_reg_count * REG_SIZE;
 				stack_mem += info->fp_reg_count * sizeof(double);
 				stack_mem += info->float_arg_cnt * sizeof(double);
-				stack_mem += space_for_outgoing_args(jit, op);
+//				stack_mem += space_for_outgoing_args(jit, op);
 
-				stack_mem = jit_value_align(stack_mem, 16);
-				sparc_save_imm(jit->ip, sparc_sp, -stack_mem, sparc_sp);
-*/
+				stack_mem = jit_value_align(stack_mem, 8);
+				//sparc_save_imm(jit->ip, sparc_sp, -stack_mem, sparc_sp);
+
+
+				arm32_pushall_but_r0(jit->ip);
 			} while (0);
 			break;
-/*
-		case JIT_RETVAL: 
-				  // o0 is not a part of the reg. pool and thus 
-				  // reg. allocator can not take care of the proper register assignment
-				  if (a1 != sparc_o0) sparc_mov_reg_reg(jit->ip, sparc_o0, a1); 
-				  break;
-
+		case JIT_RETVAL: break; // reg. allocator takes care of the proper register assignment
 		case JIT_DECL_ARG: break;
 
 		case JIT_LABEL: ((jit_label *)a1)->pos = JIT_BUFFER_OFFSET(jit); break; 
 
 		case (JIT_LD | REG | SIGNED): 
 				switch (op->arg_size) {
-					case 1: sparc_ldsb(jit->ip, a2, sparc_g0, a1); break;
-					case 2: sparc_ldsh(jit->ip, a2, sparc_g0, a1); break;
-					case 4: sparc_ld(jit->ip, a2, sparc_g0, a1); break;
+//					case 1: sparc_ldsb(jit->ip, a2, sparc_g0, a1); break;
+//					case 2: sparc_ldsh(jit->ip, a2, sparc_g0, a1); break;
+					case 4: arm32_ldr_imm(jit->ip, a1, a2, 0); break;
 					default: abort();
 				} break;
 
 		case (JIT_LD | REG | UNSIGNED): 
 				switch (op->arg_size) {
-					case 1: sparc_ldub(jit->ip, a2, sparc_g0, a1); break;
-					case 2: sparc_lduh(jit->ip, a2, sparc_g0, a1); break;
-					case 4: sparc_ld(jit->ip, a2, sparc_g0, a1); break;
+					//case 1: sparc_ldub(jit->ip, a2, sparc_g0, a1); break;
+					//case 2: sparc_lduh(jit->ip, a2, sparc_g0, a1); break;
+					case 4: arm32_ldr_imm(jit->ip, a1, a2, 0); break;
 					default: abort();
 				} break;
-
 		case (JIT_LD | IMM | SIGNED): 
 				switch (op->arg_size) {
-					case 1: sparc_ldsb_imm(jit->ip, sparc_g0, a2, a1); break;
-					case 2: sparc_ldsh_imm(jit->ip, sparc_g0, a2, a1); break;
-					case 4: sparc_ld_imm(jit->ip, sparc_g0, a2, a1); break;
+//					case 1: sparc_ldsb_imm(jit->ip, sparc_g0, a2, a1); break;
+//					case 2: sparc_ldsh_imm(jit->ip, sparc_g0, a2, a1); break;
+					case 4: arm32_ldr_imm(jit->ip, a1, a2, 0); break;
 					default: abort();
 				} break;
 
 		case (JIT_LD | IMM | UNSIGNED): 
 				switch (op->arg_size) {
-					case 1: sparc_ldub_imm(jit->ip, sparc_g0, a2, a1); break;
-					case 2: sparc_lduh_imm(jit->ip, sparc_g0, a2, a1); break;
-					case 4: sparc_ld_imm(jit->ip, sparc_g0, a2, a1); break;
+//					case 1: sparc_ldub_imm(jit->ip, sparc_g0, a2, a1); break;
+//					case 2: sparc_lduh_imm(jit->ip, sparc_g0, a2, a1); break;
+					case 4: arm32_ldr_imm(jit->ip, a1, a2, 0); break;
 					default: abort();
 				} break;
 
 		case (JIT_LDX | IMM | SIGNED): 
 				switch (op->arg_size) {
-					case 1: sparc_ldsb_imm(jit->ip, a2, a3, a1); break;
-					case 2: sparc_ldsh_imm(jit->ip, a2, a3, a1); break;
-					case 4: sparc_ld_imm(jit->ip, a2, a3, a1); break;
+//					case 1: sparc_ldsb_imm(jit->ip, a2, a3, a1); break;
+//					case 2: sparc_ldsh_imm(jit->ip, a2, a3, a1); break;
+					case 4: arm32_ldr_reg(jit->ip, a1, a2, a3); break;
 					default: abort();
 				} break;
 
 		case (JIT_LDX | IMM | UNSIGNED): 
 				switch (op->arg_size) {
-					case 1: sparc_ldub_imm(jit->ip, a2, a3, a1); break;
-					case 2: sparc_lduh_imm(jit->ip, a2, a3, a1); break;
-					case 4: sparc_ld_imm(jit->ip, a2, a3, a1); break;
+//					case 1: sparc_ldub_imm(jit->ip, a2, a3, a1); break;
+//					case 2: sparc_lduh_imm(jit->ip, a2, a3, a1); break;
+					case 4: arm32_ldr_reg(jit->ip, a1, a2, a3); break;
 					default: abort();
 				} break;
 
 		case (JIT_LDX | REG | SIGNED): 
 				switch (op->arg_size) {
-					case 1: sparc_ldsb(jit->ip, a2, a3, a1); break;
-					case 2: sparc_ldsh(jit->ip, a2, a3, a1); break;
-					case 4: sparc_ld(jit->ip, a2, a3, a1); break;
+//					case 1: sparc_ldsb(jit->ip, a2, a3, a1); break;
+//					case 2: sparc_ldsh(jit->ip, a2, a3, a1); break;
+					case 4: arm32_ldr_reg(jit->ip, a1, a2, a3); break;
 					default: abort();
 				} break;
-
 		case (JIT_LDX | REG | UNSIGNED): 
 				switch (op->arg_size) {
-					case 1: sparc_ldub(jit->ip, a2, a3, a1); break;
-					case 2: sparc_lduh(jit->ip, a2, a3, a1); break;
-					case 4: sparc_ld(jit->ip, a2, a3, a1); break;
+//					case 1: sparc_ldub(jit->ip, a2, a3, a1); break;
+//					case 2: sparc_lduh(jit->ip, a2, a3, a1); break;
+					case 4: arm32_ldr_reg(jit->ip, a1, a2, a3); break;
 					default: abort();
 				} break;
-
+/*
 		case (JIT_ST | REG):
 				switch (op->arg_size) {
 					case 1: sparc_stb(jit->ip, a2, sparc_g0, a1); break;
@@ -1118,41 +1089,36 @@ op_complete:
 			else sparc_lddf_imm(jit->ip, sparc_fp, GET_REG_POS(jit, a2), a1);
 			break;
 		case JIT_RENAMEREG: sparc_mov_reg_reg(jit->ip, a2, a1); break;
+*/
 		case JIT_CODESTART: break;
 		case JIT_NOP: break;
-		default: printf("sparc: unknown operation (opcode: 0x%x)\n", GET_OP(op) >> 3);
-*/
+		default: printf("arm32: unknown operation (opcode: 0x%x)\n", GET_OP(op) >> 3);
 	}
 }
 
 struct jit_reg_allocator * jit_reg_allocator_create()
 {
 	struct jit_reg_allocator * a = JIT_MALLOC(sizeof(struct jit_reg_allocator));
-	// XXX: r9 -- purpose?
-	a->gp_reg_cnt = 13;
+	a->gp_reg_cnt = 11;
 #ifdef JIT_REGISTER_TEST
-	a->gp_reg_cnt -= 6;
+	a->gp_reg_cnt -= 5;
 #endif 
-	a->gp_regs = JIT_MALLOC(sizeof(jit_hw_reg) * (a->gp_reg_cnt + 1));
+	a->gp_regs = JIT_MALLOC(sizeof(jit_hw_reg) * (a->gp_reg_cnt));
 
-	int i = 0;
-	a->gp_regs[i++] = (jit_hw_reg) { ARMREG_R0, "r0", 0, 0, 0 };
-	a->gp_regs[i++] = (jit_hw_reg) { ARMREG_R1, "r1", 0, 0, 1 };
-	a->gp_regs[i++] = (jit_hw_reg) { ARMREG_R2, "r2", 0, 0, 2 };
-	a->gp_regs[i++] = (jit_hw_reg) { ARMREG_R3, "r3", 0, 0, 3 };
-	a->gp_regs[i++] = (jit_hw_reg) { ARMREG_R4, "r4", 1, 0, 4 };
-	a->gp_regs[i++] = (jit_hw_reg) { ARMREG_R5, "r5", 1, 0, 5 };
+	a->gp_regs[0] = (jit_hw_reg) { ARMREG_R0, "r0", 0, 0, 0 };
+	a->gp_regs[1] = (jit_hw_reg) { ARMREG_R1, "r1", 0, 0, 1 };
+	a->gp_regs[2] = (jit_hw_reg) { ARMREG_R2, "r2", 0, 0, 2 };
+	a->gp_regs[3] = (jit_hw_reg) { ARMREG_R3, "r3", 0, 0, 3 };
+	a->gp_regs[4] = (jit_hw_reg) { ARMREG_R4, "r4", 1, 0, 4 };
+	a->gp_regs[5] = (jit_hw_reg) { ARMREG_R5, "r5", 1, 0, 5 };
 #ifndef JIT_REGISTER_TEST
-	a->gp_regs[i++] = (jit_hw_reg) { ARMREG_R6, "r6", 1, 0, 6 };
-	a->gp_regs[i++] = (jit_hw_reg) { ARMREG_R7, "r7", 1, 0, 7 };
-	a->gp_regs[i++] = (jit_hw_reg) { ARMREG_R8, "r8", 1, 0, 8 };
-	a->gp_regs[i++] = (jit_hw_reg) { ARMREG_R9, "r9", 1, 0, 9 };
-	a->gp_regs[i++] = (jit_hw_reg) { ARMREG_R10, "r10", 1, 0, 10 };
-	a->gp_regs[i++] = (jit_hw_reg) { ARMREG_R11, "r11", 1, 0, 11 };
-
+	a->gp_regs[6] = (jit_hw_reg) { ARMREG_R6, "r6", 1, 0, 6 };
+	a->gp_regs[7] = (jit_hw_reg) { ARMREG_R7, "r7", 1, 0, 7 };
+	a->gp_regs[8] = (jit_hw_reg) { ARMREG_R8, "r8", 1, 0, 8 };
+	a->gp_regs[9] = (jit_hw_reg) { ARMREG_R9, "r9", 1, 0, 9 };
+	a->gp_regs[10] = (jit_hw_reg) { ARMREG_R10, "r10", 1, 0, 10 };
 #endif
 
-	a->gp_regs[i++] = (jit_hw_reg) { ARMREG_FP, "fp", 0, 0, 12 };
 
 	a->fp_reg_cnt = 0;
 
