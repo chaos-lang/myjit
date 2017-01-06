@@ -102,17 +102,19 @@ void jit_init_arg_params(struct jit * jit, struct jit_func_info * info, int p, i
 		*phys_reg = *phys_reg + 1;
 	}
 }
-/*
-static inline void emit_cond_op_op(struct jit * jit, struct jit_op * op, int cond, int imm)
+
+static inline void emit_cond_op(struct jit *jit, struct jit_op *op, int cond, int imm)
 {
 	if (imm) {
-		if (op->r_arg[2] != 0) sparc_cmp_imm(jit->ip, op->r_arg[1], op->r_arg[2]);
-		else sparc_cmp(jit->ip, op->r_arg[1], sparc_g0);
-	} else sparc_cmp(jit->ip, op->r_arg[1], op->r_arg[2]);
-	sparc_or_imm(jit->ip, FALSE, sparc_g0, 0, op->r_arg[0]); // clear
-	sparc_movcc_imm(jit->ip, sparc_xcc, cond, 1, op->r_arg[0]);
-}
+		arm32_alucc_reg_imm(jit->ip, ARMOP_CMP, 1, 0, op->r_arg[1], op->r_arg[2]);
+	} else {
+		arm32_alucc_reg_reg(jit->ip, ARMOP_CMP, 1, 0, op->r_arg[1], op->r_arg[2]);
+	}
 
+	arm32_mov_reg_imm32(jit->ip, op->r_arg[0], 0);
+	arm32_cond_mov_reg_imm32(jit->ip, cond, op->r_arg[0], 1);
+}
+/*
 static inline void emit_branch_op(struct jit * jit, struct jit_op * op, int cond, int imm)
 {
 	if (imm) {
@@ -447,7 +449,7 @@ void emit_optimized_multiplication(struct jit * jit, long a1, long a2, long a3)
 		if (bits == 0) break;
 	}
 }
-
+*/
 
 void emit_mul(struct jit * jit, jit_op * op)
 {
@@ -456,13 +458,14 @@ void emit_mul(struct jit * jit, jit_op * op)
 	long a3 = op->r_arg[2];
 	if (IS_IMM(op)) {
 		if (a3 == 0) {
-			sparc_mov_reg_reg(jit->ip, sparc_g0, a1);
+			arm32_mov_reg_imm32(jit->ip, a1, 0);
 			return;
 		}
 		if (a3 == 1) {
-			if (a1 != a2) sparc_mov_reg_reg(jit->ip, a2, a1);
+			if (a1 != a2) arm32_mov_reg_reg(jit->ip, a1, a2);
 			return;
 		}
+/* XXX: TODO
 		if ((a3 > 0) && (_bit_pop(a3) <= 5)) {
 			emit_optimized_multiplication(jit, a1, a2, a3);
 			return;
@@ -472,14 +475,14 @@ void emit_mul(struct jit * jit, jit_op * op)
 			sparc_neg(jit->ip, a1);
 			return;
 		}
-		if (IS_SIGNED(op)) sparc_smul_imm(jit->ip, FALSE, a2, a3, a1);
-		else sparc_umul_imm(jit->ip, FALSE, a2, a3, a1);
+*/
+		// other immediate values not permitted
+		abort();
 	} else {
-		if (IS_SIGNED(op)) sparc_smul(jit->ip, FALSE, a2, a3, a1);
-		else sparc_umul_imm(jit->ip, FALSE, a2, a3, a1); 
+		arm32_mul(jit->ip, a1, a2, a3);
 	}
 }
-
+/*
 // common function for floor & ceil ops
 static void emit_sparc_round(struct jit * jit, long a1, long a2)
 {
@@ -583,13 +586,6 @@ static inline void emit_ureg(struct jit * jit, long vreg, long hreg_id)
 		else sparc_stdf_imm(jit->ip, hreg_id, sparc_fp, GET_REG_POS(jit, vreg));
 	}
 }
-
-#define emit_alu_op(cc, reg_op, imm_op) \
-	if (IS_IMM(op)) {\
-		if (a3 != 0) imm_op(jit->ip, cc, a2, a3, a1); \
-		else reg_op(jit->ip, cc, a2, sparc_g0, a1); \
-	} else reg_op(jit->ip, cc, a2, a3, a1); \
-	break;
 */
 #define emit_alu_op(cc, arm_op) \
 	do {\
@@ -611,33 +607,35 @@ void jit_gen_op(struct jit * jit, struct jit_op * op)
 		case JIT_SUB: emit_alu_op(0, ARMOP_SUB); break;
 		case JIT_SUBC: emit_alu_op(1, ARMOP_SUB); break;
 		// FIXME: should set carry flag
-		case JIT_SUBX: emit_alu_op(0, ARMOP_SBC); break;
+		case JIT_SUBX: 
+			emit_alu_op(0, ARMOP_SUB); 
+			arm32_encode_dataop(jit->ip, ARMCOND_CS, 1, ARMOP_SUB, 0, a1, a1, 1);
+			break;
 		case JIT_RSB: emit_alu_op(0, ARMOP_RSB); break;
 		case JIT_NEG: arm32_alu_reg_imm(jit->ip, ARMOP_RSB, a1, a2, 0); break;
-/*
-		case JIT_NOT: if (a1 != a2) sparc_mov_reg_reg(jit->ip, a2, a1);
-			      sparc_not(jit->ip, a1); 
-			      break;
-*/
+		case JIT_NOT: arm32_alu_reg_reg(jit->ip, ARMOP_MVN,  a1, 0, a2); break;
+
 		case JIT_OR:  emit_alu_op(0, ARMOP_ORR); break;
 		case JIT_AND: emit_alu_op(0, ARMOP_AND); break;
 		case JIT_XOR: emit_alu_op(0, ARMOP_EOR); break;
-/*
-		case JIT_LSH: if (IS_IMM(op)) sparc_sll_imm(jit->ip, a2, a3, a1);
-			else sparc_sll(jit->ip, a2, a3, a1);
+		// XXX: jine immediate values
+		case JIT_LSH: if (IS_IMM(op)) arm32_lsh_imm(jit->ip, a1, a2, a3);
+			else arm32_lsh_reg(jit->ip, a1, a2, a3);
 			break;
+		// XXX: jine immediate values
 		case JIT_RSH:
 			if (IS_SIGNED(op)) {
-				if (IS_IMM(op)) sparc_sra_imm(jit->ip, a2, a3, a1);
-				else sparc_sra(jit->ip, a2, a3, a1);
+				if (IS_IMM(op)) arm32_rsa_imm(jit->ip, a1, a2, a3);
+				else arm32_rsa_reg(jit->ip, a1, a2, a3);
 			} else {
-				if (IS_IMM(op)) sparc_srl_imm(jit->ip, a2, a3, a1);
-				else sparc_srl(jit->ip, a2, a3, a1);
+				if (IS_IMM(op)) arm32_rsh_imm(jit->ip, a1, a2, a3);
+				else arm32_rsh_reg(jit->ip, a1, a2, a3);
 			}
 			break;
 
 		case JIT_MUL:  emit_mul(jit, op); break;
 
+/*
 		case JIT_HMUL: 
 			if (IS_SIGNED(op)) {
 				if (IS_IMM(op)) sparc_smul_imm(jit->ip, FALSE, a2, a3, sparc_g0);
@@ -649,46 +647,36 @@ void jit_gen_op(struct jit * jit, struct jit_op * op)
 			sparc_nop(jit->ip);
 			sparc_rdy(jit->ip, a1);
 			break;
-
+*/
 		case JIT_DIV: 
 			if (IS_SIGNED(op)) {
 				if (IS_IMM(op)) {
 					switch (a3) {
-						case 2: sparc_sra_imm(jit->ip, a2, 1, a1); goto op_complete;
-						case 4: sparc_sra_imm(jit->ip, a2, 2, a1); goto op_complete;
-						case 8: sparc_sra_imm(jit->ip, a2, 3, a1); goto op_complete;
-						case 16: sparc_sra_imm(jit->ip, a2, 4, a1); goto op_complete;
-						case 32: sparc_sra_imm(jit->ip, a2, 5, a1); goto op_complete;
+						case 2: arm32_rsa_imm(jit->ip, a1, a2, 1); goto op_complete;
+						case 4: arm32_rsa_imm(jit->ip, a1, a2, 2); goto op_complete;
+						case 8: arm32_rsa_imm(jit->ip, a1, a2, 3); goto op_complete;
+						case 16: arm32_rsa_imm(jit->ip, a1, a2, 4); goto op_complete;
+						case 32: arm32_rsa_imm(jit->ip, a1, a2, 5); goto op_complete;
 					}
 				} 
-				sparc_sra_imm(jit->ip, a2, 31, sparc_g1);
-				sparc_wry(jit->ip, sparc_g1, sparc_g0);
-				sparc_nop(jit->ip);
-				sparc_nop(jit->ip);
-				sparc_nop(jit->ip);
-
-				if (IS_IMM(op)) sparc_sdiv_imm(jit->ip, FALSE, a2, a3, a1);
-				else sparc_sdiv(jit->ip, FALSE, a2, a3, a1);
+				if (IS_IMM(op)) abort();
+				else arm32_sdiv(jit->ip, a1, a2, a3);
 			} else { // UNSIGNED
 				if (IS_IMM(op)) {
 					switch (a3) {
-						case 2: sparc_srl(jit->ip, a2, 1, a1); goto op_complete;
-						case 4: sparc_srl_imm(jit->ip, a2, 2, a1); goto op_complete;
-						case 8: sparc_srl_imm(jit->ip, a2, 3, a1); goto op_complete;
-						case 16: sparc_srl_imm(jit->ip, a2, 4, a1); goto op_complete;
-						case 32: sparc_srl_imm(jit->ip, a2, 5, a1); goto op_complete;
+						case 2: arm32_rsh_imm(jit->ip, a1, a2, 1); goto op_complete;
+						case 4: arm32_rsh_imm(jit->ip, a1, a2, 2); goto op_complete;
+						case 8: arm32_rsh_imm(jit->ip, a1, a2, 3); goto op_complete;
+						case 16: arm32_rsh_imm(jit->ip, a1, a2, 4); goto op_complete;
+						case 32: arm32_rsh_imm(jit->ip, a1, a2, 5); goto op_complete;
 					}
 				} 
-				sparc_wry(jit->ip, sparc_g0, sparc_g0);
-				sparc_nop(jit->ip);
-				sparc_nop(jit->ip);
-				sparc_nop(jit->ip);
 
-				if (IS_IMM(op)) sparc_udiv_imm(jit->ip, FALSE, a2, a3, a1);
-				else sparc_udiv(jit->ip, FALSE, a2, a3, a1);
+				if (IS_IMM(op)) abort();
+				else arm32_udiv(jit->ip, a1, a2, a3);
 			}
 			break;
-
+/*
 		case JIT_MOD: 
 			if (IS_IMM(op)) {
 				switch (a3) {
@@ -728,12 +716,15 @@ void jit_gen_op(struct jit * jit, struct jit_op * op)
 			}
 			sparc_sub(jit->ip, FALSE, a2, sparc_g1, a1);
 			break;
-		case JIT_LT: emit_cond_op_op(jit, op, IS_SIGNED(op) ? sparc_bl : sparc_blu, IS_IMM(op)); break;
-		case JIT_LE: emit_cond_op_op(jit, op, IS_SIGNED(op) ? sparc_ble : sparc_bleu, IS_IMM(op)); break;
-		case JIT_GT: emit_cond_op_op(jit, op, IS_SIGNED(op) ? sparc_bg : sparc_bgu, IS_IMM(op)); break;
-		case JIT_GE: emit_cond_op_op(jit, op, IS_SIGNED(op) ? sparc_bge : sparc_bgeu, IS_IMM(op)); break;
-		case JIT_EQ: emit_cond_op_op(jit, op, sparc_be, IS_IMM(op)); break;
-		case JIT_NE: emit_cond_op_op(jit, op, sparc_bne, IS_IMM(op)); break;
+
+*/
+		case JIT_LT: emit_cond_op(jit, op, IS_SIGNED(op) ? ARMCOND_LT : ARMCOND_CC, IS_IMM(op)); break;
+		case JIT_LE: emit_cond_op(jit, op, IS_SIGNED(op) ? ARMCOND_LE : ARMCOND_LS, IS_IMM(op)); break;
+		case JIT_GT: emit_cond_op(jit, op, IS_SIGNED(op) ? ARMCOND_GT : ARMCOND_HI, IS_IMM(op)); break;
+		case JIT_GE: emit_cond_op(jit, op, IS_SIGNED(op) ? ARMCOND_GE : ARMCOND_CS, IS_IMM(op)); break;
+		case JIT_EQ: emit_cond_op(jit, op, ARMCOND_EQ, IS_IMM(op)); break;
+		case JIT_NE: emit_cond_op(jit, op, ARMCOND_NE, IS_IMM(op)); break;
+/*
 		case JIT_BLT: emit_branch_op(jit, op, IS_SIGNED(op) ? sparc_bl : sparc_blu, IS_IMM(op)); break;
 		case JIT_BGT: emit_branch_op(jit, op, IS_SIGNED(op) ? sparc_bg : sparc_bgu, IS_IMM(op)); break;
 		case JIT_BLE: emit_branch_op(jit, op, IS_SIGNED(op) ? sparc_ble : sparc_bleu, IS_IMM(op)); break;
@@ -876,24 +867,26 @@ op_complete:
 
 		case (JIT_LD | REG | UNSIGNED): 
 				switch (op->arg_size) {
-					//case 1: sparc_ldub(jit->ip, a2, sparc_g0, a1); break;
-					//case 2: sparc_lduh(jit->ip, a2, sparc_g0, a1); break;
+					case 1: arm32_ldub_imm(jit->ip, a1, a2, 0); break;
+					case 2: arm32_lduh_imm(jit->ip, a1, a2, 0); break;
 					case 4: arm32_ldr_imm(jit->ip, a1, a2, 0); break;
 					default: abort();
 				} break;
 		case (JIT_LD | IMM | SIGNED): 
+				// FIXME: nema smysl
 				switch (op->arg_size) {
 //					case 1: sparc_ldsb_imm(jit->ip, sparc_g0, a2, a1); break;
 //					case 2: sparc_ldsh_imm(jit->ip, sparc_g0, a2, a1); break;
-					case 4: arm32_ldr_imm(jit->ip, a1, a2, 0); break;
+//					case 4: arm32_ldr_imm(jit->ip, a1, a2, 0); break;
 					default: abort();
 				} break;
 
 		case (JIT_LD | IMM | UNSIGNED): 
 				switch (op->arg_size) {
-//					case 1: sparc_ldub_imm(jit->ip, sparc_g0, a2, a1); break;
-//					case 2: sparc_lduh_imm(jit->ip, sparc_g0, a2, a1); break;
-					case 4: arm32_ldr_imm(jit->ip, a1, a2, 0); break;
+					// FIXME: nema smysl
+//					case 1: arm32_ldub_imm(jit->ip, a1, a2, 0); break;
+//					case 2: arm32_lduh_imm(jit->ip, a1, a2, 0); break;
+//					case 4: arm32_ldr_imm(jit->ip, a1, a2, 0); break;
 					default: abort();
 				} break;
 
@@ -907,23 +900,25 @@ op_complete:
 
 		case (JIT_LDX | IMM | UNSIGNED): 
 				switch (op->arg_size) {
-//					case 1: sparc_ldub_imm(jit->ip, a2, a3, a1); break;
-//					case 2: sparc_lduh_imm(jit->ip, a2, a3, a1); break;
+					case 1: arm32_ldub_imm(jit->ip, a1, a2, a3); break;
+					// XXX: jiny rozsah imm hodnot
+					//case 2: arm32_lduh_imm(jit->ip, a1, a2, a3); break;
 					case 4: arm32_ldr_reg(jit->ip, a1, a2, a3); break;
 					default: abort();
 				} break;
 
 		case (JIT_LDX | REG | SIGNED): 
 				switch (op->arg_size) {
-//					case 1: sparc_ldsb(jit->ip, a2, a3, a1); break;
+					case 1: arm32_ldrsb_reg(jit->ip, a1, a2, a3); break;
 //					case 2: sparc_ldsh(jit->ip, a2, a3, a1); break;
 					case 4: arm32_ldr_reg(jit->ip, a1, a2, a3); break;
 					default: abort();
 				} break;
+
 		case (JIT_LDX | REG | UNSIGNED): 
 				switch (op->arg_size) {
-//					case 1: sparc_ldub(jit->ip, a2, a3, a1); break;
-//					case 2: sparc_lduh(jit->ip, a2, a3, a1); break;
+					case 1: arm32_ldub_reg(jit->ip, a1, a2, a3); break;
+					case 2: arm32_lduh_reg(jit->ip, a1, a2, a3); break;
 					case 4: arm32_ldr_reg(jit->ip, a1, a2, a3); break;
 					default: abort();
 				} break;

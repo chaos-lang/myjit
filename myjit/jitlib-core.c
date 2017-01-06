@@ -128,19 +128,27 @@ jit_label * jit_get_label(struct jit * jit)
 /**
  * returns 1 if the immediate value has to be transformed into register
  */
-static int jit_imm_overflow(struct jit * jit, int signed_op, long value)
+static int jit_imm_overflow(struct jit *jit, jit_op *op, long value)
 {
 #ifndef JIT_ARCH_ARM32
 	unsigned long mask = ~((1UL << JIT_IMM_BITS) - 1);
 	unsigned long high_bits = value & mask;
 
-	if (signed_op) {
+	if (IS_SIGNED(op)) {
 		if ((high_bits != 0) && (high_bits != mask)) return 1;
 	} else {
 		if (high_bits != 0) return 1;
 	}
 	return 0;
 #else
+	// XXX: special cases
+	if (GET_OP(op) == JIT_MUL) return 1;
+	if ((GET_OP(op) == JIT_DIV)) {
+		if (IS_IMM(op)) {
+			return !((value == 1) || (value == 2) || (value == 4) || (value == 8) || (value == 16) || (value == 32));
+		} else return 0;
+	}
+	if (GET_OP(op) == JIT_MOD) return 1;
 	return arm32_imm_rotate(value) == -1;
 #endif
 }
@@ -171,7 +179,7 @@ static void jit_correct_long_imms(struct jit * jit)
 			if (ARG_TYPE(op, i) == IMM) imm_arg = i - 1;
 		long value = op->arg[imm_arg];
 
-		if (jit_imm_overflow(jit, IS_SIGNED(op), value)) {
+		if (jit_imm_overflow(jit, op, value)) {
 			jit_op * newop = jit_op_new(JIT_MOV | IMM, SPEC(TREG, IMM, NO), R_IMM, value, 0, REG_SIZE);
 			jit_op_prepend(op, newop);
 
