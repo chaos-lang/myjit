@@ -143,7 +143,23 @@ static int jit_imm_overflow(struct jit *jit, jit_op *op, long value)
 #else
 	// XXX: special cases
 	if (GET_OP(op) == JIT_MUL) return 1;
-	if ((GET_OP(op) == JIT_DIV)) {
+	if (GET_OP(op) == JIT_HMUL) return 1;
+	if (GET_OP(op) == JIT_SUBC) return 1;
+	if (op->code == (JIT_LD | IMM | SIGNED)) return 1;
+	if (op->code == (JIT_LD | IMM | UNSIGNED)) return 1;
+
+
+	if (op->code == (JIT_LSH | IMM | SIGNED)) return (value < 0) || (value > 31);
+	if (op->code == (JIT_RSH | IMM | SIGNED)) return (value < 0) || (value > 31);
+	if (op->code == (JIT_RSH | IMM | UNSIGNED)) return (value < 0) || (value > 31);
+
+	if ((op->code == (JIT_LDX | IMM | SIGNED)) && (op->arg_size == 1)) return (value < -255) || (value > 255);
+	if ((op->code == (JIT_LDX | IMM | SIGNED)) && (op->arg_size == 2)) return (value < -255) || (value > 255);;
+	if ((op->code == (JIT_LDX | IMM | UNSIGNED)) && (op->arg_size == 2)) return (value < -255) || (value > 255);;
+	if ((op->code == (JIT_STX | IMM)) && (op->arg_size == 2)) return (value < -255) || (value > 255);;
+
+
+	if ((GET_OP(op) == JIT_DIV) || (GET_OP(op) == JIT_MOD)) {
 		if (IS_IMM(op)) {
 			return !((value == 1) || (value == 2) || (value == 4) || (value == 8) || (value == 16) || (value == 32));
 		} else return 0;

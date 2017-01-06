@@ -216,13 +216,17 @@ static inline int arm32_encode_imm(int x)
 
 #define arm32_encode_branch(ins, _cond, _link, _offset) \
 	do { \
-		unsigned int op = 0; \
-		op |= _cond << 28; \
-		op |= 0x5 << 25; \
-		op |= _link << 24; \
-		op |= _offset;\
-		arm32_emit((ins), op); \
+		unsigned int _op = 0; \
+		_op |= _cond << 28; \
+		_op |= 0x5 << 25; \
+		_op |= _link << 24; \
+		_op |= (_offset) & 0xffffff;\
+		arm32_emit((ins), _op); \
 	} while (0)
+
+
+#define arm32_branch(ins, _cond, _offset) \
+	arm32_encode_branch(ins, _cond, 0, _offset - 2)
 
 #define arm32_bx(ins, _cond, _rn) \
 	do { \
@@ -231,6 +235,15 @@ static inline int arm32_encode_imm(int x)
 		op |= 0x12fff1 << 4; \
 		op |= _rn;\
 		arm32_emit(ins, op); \
+	} while (0)
+
+#define arm32_patch(target, pos) \
+	do { \
+		long __p =  ((long)(pos)) >> 2; \
+		long __t =  ((long)(target)) >> 2; \
+		long __location = (__p - __t - 2); \
+			*(int *)(target) &= ~(0xffffff); /* 24 bits */\
+			*(int *)(target) |= (0xffffff & __location); /* 24 bits */\
 	} while (0)
 
 #define arm32_cond_movw_reg_imm16(ins, _cond, _rd, _imm) \
@@ -257,9 +270,9 @@ static inline int arm32_encode_imm(int x)
 
 #define arm32_cond_mov_reg_imm32(ins, _cond, _rd, _imm) \
 	do { \
-		if ((_imm) & 0xffff) arm32_cond_movw_reg_imm16(ins, _cond, _rd, (_imm) & 0xffff); \
-		if ((_imm) & 0xffff0000) arm32_cond_movt_reg_imm16(ins, _cond, _rd, ((unsigned int) (_imm)) >> 16 & 0xffff); \
-		if (!(_imm)) arm32_cond_movw_reg_imm16(ins, _cond, _rd, 0); \
+		/*if ((_imm) & 0xffff)*/ arm32_cond_movw_reg_imm16(ins, _cond, _rd, (_imm) & 0xffff); \
+		/*if ((_imm) & 0xffff0000)*/ arm32_cond_movt_reg_imm16(ins, _cond, _rd, ((unsigned int) (_imm)) >> 16 & 0xffff); \
+		/*if (!(_imm)) arm32_cond_movw_reg_imm16(ins, _cond, _rd, 0); */ \
 	} while (0)
 
 
@@ -281,6 +294,9 @@ static inline int arm32_encode_imm(int x)
 #define arm32_mov_reg_reg(ins, _rd, _rm) \
 	arm32_alu_reg_reg(ins, ARMOP_MOV, _rd, 0, _rm)
 
+#define arm32_cmp_reg_reg(ins, _rd, _rn, _rm) \
+	arm32_alucc_reg_reg(ins, ARMOP_CMP, 1, _rd, _rn, _rm)
+
 #define arm32_mul(ins, rd, rm, rn) \
 	do { \
 		int _op = ARMCOND_AL << 28; \
@@ -290,6 +306,19 @@ static inline int arm32_encode_imm(int x)
 		_op |= (rn); \
 		arm32_emit(ins, _op);	\
 	} while (0) 
+
+#define arm32_hmul(ins, rd, rm, rn) \
+	do { \
+		int _op = ARMCOND_AL << 28; \
+		_op |= 0x75 << 20; \
+		_op |= (rd) << 16; \
+		_op |= 0xf << 12; \
+		_op |= (rm) << 8; \
+		_op |= 0x1 << 4; \
+		_op |= (rn); \
+		arm32_emit(ins, _op);	\
+	} while (0) 
+
 
 #define arm32_xdiv(ins, tag, rd, rn, rm) \
 	do { \
@@ -348,131 +377,115 @@ static inline int arm32_encode_imm(int x)
 		arm32_emit(ins, op); \
 	} while (0)
 
-#define arm32_ldr(ins, _imm, rd, rn, op2) \
+// FIXME: negative values
+#define arm32_single_data_transfer(ins, load, regs, byte, rd, rn, op2) \
 	do { \
 		unsigned int op = 0; \
 		op |= ARMCOND_AL << 28; \
 		op |= 0x1 << 26; \
-		op |= ((~(_imm)) & 0x01) << 25; /* imm */ \
+		op |= regs << 25; /* imm */ \
 		op |= 0x1 << 24; /* post/pref index */ \
 		op |= 0x1 << 23; /* rn + rm */ \
-		op |= 0x0 << 22; /* dword */ \
+		op |= byte << 22; \
 		op |= 0x0 << 21; /* write */ \
-		op |= 0x1 << 20; /* load */ \
+		op |= load << 20; /* load */ \
 		op |= rn << 16; \
 		op |= rd << 12; \
 		op |= op2; \
 		arm32_emit(ins, op);\
-	} \
-	while (0)
+	} while (0) \
 
-#define arm32_ldrb(ins, _imm, rd, rn, op2) \
-	do { \
-		unsigned int op = 0; \
-		op |= ARMCOND_AL << 28; \
-		op |= 0x1 << 26; \
-		op |= ((~(_imm)) & 0x01) << 25; /* imm */ \
-		op |= 0x1 << 24; /* post/pref index */ \
-		op |= ARM_UP << 23; /* rn + rm */ \
-		op |= 0x1 << 22; /* byte */ \
-		op |= 0x0 << 21; /* write */ \
-		op |= 0x1 << 20; /* load */ \
-		op |= rn << 16; \
-		op |= rd << 12; \
-		op |= op2; \
-		arm32_emit(ins, op);\
-	} \
-	while (0)
-
-#define arm32_ldrh(ins, _imm, rd, rn, op2) \
-	do { \
-		unsigned int op = 0; \
-		op |= ARMCOND_AL << 28; \
-		op |= 0x0 << 26; \
-		op |= ((~(_imm)) & 0x01) << 25; /* imm */ \
-		op |= 0x1 << 24; /* post/pref index */ \
-		op |= 0x1 << 23; /* rn + rm */ \
-		op |= 0x1 << 22; /* byte */ \
-		op |= 0x0 << 21; /* write */ \
-		op |= 0x1 << 20; /* load */ \
-		op |= rn << 16; \
-		op |= rd << 12; \
-		op |= op2; \
-		arm32_emit(ins, op);\
-	} \
-	while (0)
-
-
-
-#define arm32_ldr_reg(ins, rd, rn, rm) \
-	arm32_ldr(ins, 0, rd, rn, rm)
-
-#define arm32_ldr_imm(ins, rd, rn, imm) \
-	arm32_ldr(ins, 1, rd, rn, arm32_encode_imm(imm))
+#define arm32_ld_reg(ins, rd, rn, rm) \
+	arm32_single_data_transfer(ins, 1, 1, 0, rd, rn, rm)
 
 #define arm32_ldub_reg(ins, rd, rn, rm) \
-	arm32_ldrb(ins, 0, rd, rn, rm)
+	arm32_single_data_transfer(ins, 1, 1, 1, rd, rn, rm)
+
+#define arm32_ld_imm(ins, rd, rn, imm) \
+	arm32_single_data_transfer(ins, 1, 0, 0, rd, rn, arm32_encode_imm(imm))
 
 #define arm32_ldub_imm(ins, rd, rn, imm) \
-	arm32_ldrb(ins, 1, rd, rn, arm32_encode_imm(imm))
+	arm32_single_data_transfer(ins, 1, 0, 1, rd, rn, arm32_encode_imm(imm))
+
+#define arm32_st_reg(ins, rd, rn, rm) \
+	arm32_single_data_transfer(ins, 0, 1, 0, rd, rn, rm)
+
+#define arm32_stb_reg(ins, rd, rn, rm) \
+	arm32_single_data_transfer(ins, 0, 1, 1, rd, rn, rm)
+
+#define arm32_st_imm(ins, rd, rn, imm) \
+	arm32_single_data_transfer(ins, 0, 0, 0, rd, rn, arm32_encode_imm(imm))
+
+#define arm32_stb_imm(ins, rd, rn, imm) \
+	arm32_single_data_transfer(ins, 0, 0, 1, rd, rn, arm32_encode_imm(imm))
+
+
+#define arm32_signed_and_half_data_transfer_reg(ins, load, signed_value, halfword, rd, rn, rm) \
+	do { \
+		unsigned int op = 0; \
+		op |= ARMCOND_AL << 28; \
+		op |= 0x1 << 24; \
+		op |= 0x1 << 23; /* UP => rn + rm */ \
+		op |= 0x0 << 22; \
+		op |= 0x0 << 21; /* write */ \
+		op |= load << 20; /* load */ \
+		op |= rn << 16; \
+		op |= rd << 12; \
+		op |= 0x1 << 7; \
+		op |= signed_value << 6; \
+		op |= halfword << 5; \
+		op |= 0x1 << 4; \
+		op |= rm; \
+		arm32_emit(ins, op);\
+	} while (0) \
+
+#define arm32_signed_and_half_data_transfer_imm(ins, load, signed_value, halfword, rd, rn, imm) \
+	do { \
+		int _abs = (imm < 0 ? -imm : imm); \
+		unsigned int op = 0; \
+		op |= ARMCOND_AL << 28; \
+		op |= 0x1 << 24; \
+		op |= ((imm) >= 0) << 23; /* UP => rn + rm */ \
+		op |= 0x1 << 22; \
+		op |= 0x0 << 21; /* write */ \
+		op |= load << 20; /* load */ \
+		op |= rn << 16; \
+		op |= rd << 12; \
+		op |= ((_abs >> 4) & 0xf) << 8; \
+		op |= 0x1 << 7; \
+		op |= signed_value << 6; \
+		op |= halfword << 5; \
+		op |= 0x1 << 4; \
+		op |= (_abs & 0xf); \
+		arm32_emit(ins, op);\
+	} while (0) \
+
+
+
+#define arm32_ldsb_reg(ins, rd, rn, rm) \
+	arm32_signed_and_half_data_transfer_reg(ins, 1, 1, 0, rd, rn, rm)
+
+#define arm32_ldsh_reg(ins, rd, rn, rm) \
+	arm32_signed_and_half_data_transfer_reg(ins, 1, 1, 1, rd, rn, rm)
 
 #define arm32_lduh_reg(ins, rd, rn, rm) \
-	do { \
-		unsigned int op = 0; \
-		op |= ARMCOND_AL << 28; \
-		op |= 0x0 << 25; \
-		op |= 0x1 << 24; /* post/pref index */ \
-		op |= 0x1 << 23; /* rn + rm */ \
-		op |= 0x0 << 22; /* imm */ \
-		op |= 0x0 << 21; /* write */ \
-		op |= 0x1 << 20; /* load */ \
-		op |= rn << 16; \
-		op |= rd << 12; \
-		op |= 0xb << 4; \
-		op |= rm; \
-		arm32_emit(ins, op);\
-	} \
-	while (0)
+	arm32_signed_and_half_data_transfer_reg(ins, 1, 0, 1, rd, rn, rm)
 
-// FIXME: zaporne hodnoty
+#define arm32_ldsb_imm(ins, rd, rn, imm) \
+	arm32_signed_and_half_data_transfer_imm(ins, 1, 1, 0, rd, rn, imm)
+
+#define arm32_ldsh_imm(ins, rd, rn, imm) \
+	arm32_signed_and_half_data_transfer_imm(ins, 1, 1, 1, rd, rn, imm)
+
 #define arm32_lduh_imm(ins, rd, rn, imm) \
-	do { \
-		unsigned int op = 0; \
-		op |= ARMCOND_AL << 28; \
-		op |= 0x0 << 25; \
-		op |= 0x1 << 24; /* post/pref index */ \
-		op |= 0x1 << 23; /* rn + rm */ \
-		op |= 0x1 << 22; /* imm */ \
-		op |= 0x0 << 21; /* write */ \
-		op |= 0x1 << 20; /* load */ \
-		op |= rn << 16; \
-		op |= rd << 12; \
-		op |= ((0xf & (imm)) >> 4); \
-		op |= 0xb << 4; \
-		op |= ((imm) & 0xf); \
-		arm32_emit(ins, op);\
-	} \
-	while (0)
+	arm32_signed_and_half_data_transfer_imm(ins, 1, 0, 1, rd, rn, imm)
 
+#define arm32_sth_reg(ins, rd, rn, rm) \
+	arm32_signed_and_half_data_transfer_reg(ins, 0, 0, 1, rd, rn, rm)
 
-// FIXME: zaporne hodnoty
-#define arm32_ldrsb_reg(ins, rd, rn, rm) \
-	do { \
-		unsigned int op = 0; \
-		op |= ARMCOND_AL << 28; \
-		op |= 0 << 25; /* imm */ \
-		op |= 0x1 << 24; /* post/pref index */ \
-		op |= 0x1 << 23; /* rn + rm */ \
-		op |= 0x0 << 22; /* imm */ \
-		op |= 0x0 << 21; /* write */ \
-		op |= 0x1 << 20; /* load */ \
-		op |= rn << 16; \
-		op |= rd << 12; \
-		op |= 0xd << 4; \
-		op |= rm; \
-		arm32_emit(ins, op);\
-	} \
-	while (0)
+#define arm32_sth_imm(ins, rd, rn, imm) \
+	arm32_signed_and_half_data_transfer_imm(ins, 0, 0, 1, rd, rn, imm)
+
 
 
 #define arm32_shift_reg(ins, type, rd, rn, rs) \
