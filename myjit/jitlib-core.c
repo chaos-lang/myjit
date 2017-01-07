@@ -484,7 +484,7 @@ void jit_generate_code(struct jit * jit)
 
 void jit_trace(struct jit *jit, int verbosity)
 {
-#ifdef JIT_ARCH_COMMON86
+#if defined(JIT_ARCH_COMMON86) || defined(JIT_ARCH_ARM32)
 	for (jit_op *op = jit_op_first(jit->ops)->next; op != NULL; op = op->next) {
 		if (GET_OP(op) == JIT_PROLOG) continue;
 		if (GET_OP(op) == JIT_DATA_BYTE) continue;

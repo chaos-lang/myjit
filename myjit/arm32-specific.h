@@ -487,6 +487,26 @@ void emit_mul(struct jit * jit, jit_op * op)
 		arm32_mul(jit->ip, a1, a2, a3);
 	}
 }
+
+static void emit_trace_op(struct jit *jit, jit_op *op)
+{
+        arm32_pushall(jit->ip);
+
+        int trace = 0;
+        jit_opcode prev_code = GET_OP(op->prev);
+        jit_opcode next_code = GET_OP(op->next);
+        if ((prev_code == JIT_PROLOG) || (prev_code == JIT_LABEL) || (prev_code == JIT_PATCH)) trace |= TRACE_PREV;
+        if ((next_code != JIT_PROLOG) && (next_code != JIT_LABEL) && (next_code != JIT_PATCH)) trace |= TRACE_NEXT;
+
+        arm32_mov_reg_imm32(jit->ip, ARMREG_R0, jit);
+        arm32_mov_reg_imm32(jit->ip, ARMREG_R1, op);
+        arm32_mov_reg_imm32(jit->ip, ARMREG_R2, op->r_arg[0]);
+        arm32_mov_reg_imm32(jit->ip, ARMREG_R3, trace);
+        arm32_mov_reg_imm32(jit->ip, ARMREG_R4, ((void *)jit_trace_callback));
+        arm32_blx_reg(jit->ip, ARMREG_R4);
+
+        arm32_popall(jit->ip);
+}
 /*
 // common function for floor & ceil ops
 static void emit_sparc_round(struct jit * jit, long a1, long a2)
@@ -784,19 +804,19 @@ void jit_gen_op(struct jit * jit, struct jit_op * op)
 		case JIT_FPUTARG: funcall_fput_arg(jit, op); break;
 */
 		case JIT_GETARG: emit_get_arg(jit, op); break;
-/*
+
 		case JIT_MSG:
-				 sparc_set(jit->ip, a1, sparc_o0);
-				 if (!IS_IMM(op)) sparc_mov_reg_reg(jit->ip, a2, sparc_o1);
-				 op->patch_addr = JIT_BUFFER_OFFSET(jit);
-				 sparc_call_simple(jit->ip, printf);
-				 sparc_nop(jit->ip);
-				 break;
-		case JIT_TRACE: // FIXME
+				arm32_pushall(jit->ip);
+				if (!IS_IMM(op)) arm32_mov_reg_reg(jit->ip, ARMREG_R1, op->r_arg[1]);
+				arm32_mov_reg_imm32(jit->ip, ARMREG_R0, op->r_arg[0]);
+				arm32_mov_reg_imm32(jit->ip, ARMREG_R2, (unsigned long)((void *)printf));
+				arm32_blx_reg(jit->ip, ARMREG_R2);
+				arm32_popall(jit->ip);
 				break;
+		case JIT_TRACE: emit_trace_op(jit, op); break;
 
 		case JIT_ALLOCA: break;
-
+/*
 		case JIT_CODE_ALIGN: { 
 				int count = op->arg[0]; 
 				assert(!(count % 4));
@@ -898,7 +918,7 @@ op_complete:
 
 		case (JIT_LDX | REG | SIGNED): 
 				switch (op->arg_size) {
-					case 1: printf("aaa\n"); arm32_ldsb_reg(jit->ip, a1, a2, a3); break;
+					case 1: arm32_ldsb_reg(jit->ip, a1, a2, a3); break;
 					case 2: arm32_ldsh_reg(jit->ip, a1, a2, a3); break;
 					case 4: arm32_ld_reg(jit->ip, a1, a2, a3); break;
 					default: abort();

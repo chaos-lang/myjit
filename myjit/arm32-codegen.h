@@ -237,6 +237,15 @@ static inline int arm32_encode_imm(int x)
 		arm32_emit(ins, op); \
 	} while (0)
 
+#define arm32_blx_reg(ins, _rn) \
+	do { \
+		unsigned int op = 0; \
+		op |= ARMCOND_AL << 28; \
+		op |= 0x12fff3 << 4; \
+		op |= _rn;\
+		arm32_emit(ins, op); \
+	} while (0)
+
 #define arm32_patch(target, pos) \
 	do { \
 		long __p =  ((long)(pos)) >> 2; \
@@ -270,7 +279,7 @@ static inline int arm32_encode_imm(int x)
 
 #define arm32_cond_mov_reg_imm32(ins, _cond, _rd, _imm) \
 	do { \
-		/*if ((_imm) & 0xffff)*/ arm32_cond_movw_reg_imm16(ins, _cond, _rd, (_imm) & 0xffff); \
+		/*if ((_imm) & 0xffff)*/ arm32_cond_movw_reg_imm16(ins, _cond, _rd, ((unsigned int)(_imm)) & 0xffff); \
 		/*if ((_imm) & 0xffff0000)*/ arm32_cond_movt_reg_imm16(ins, _cond, _rd, ((unsigned int) (_imm)) >> 16 & 0xffff); \
 		/*if (!(_imm)) arm32_cond_movw_reg_imm16(ins, _cond, _rd, 0); */ \
 	} while (0)
@@ -345,7 +354,7 @@ static inline int arm32_encode_imm(int x)
 		unsigned int op = 0; \
 		op |= ARMCOND_AL << 28; \
 		op |= 0x92d << 16; \
-		op |= 0xfff; \
+		op |= 0x4fff; \
 		arm32_emit(ins, op); \
 	} while (0)
 
@@ -354,7 +363,7 @@ static inline int arm32_encode_imm(int x)
 		unsigned int op = 0; \
 		op |= ARMCOND_AL << 28; \
 		op |= 0x8bd << 16; \
-		op |= 0xfff; \
+		op |= 0x4fff; \
 		arm32_emit(ins, op); \
 	} while (0)
 
@@ -363,7 +372,7 @@ static inline int arm32_encode_imm(int x)
 		unsigned int op = 0; \
 		op |= ARMCOND_AL << 28; \
 		op |= 0x92d << 16; \
-		op |= 0xffe; \
+		op |= 0x4ffe; \
 		arm32_emit(ins, op); \
 	} while (0)
 
@@ -373,7 +382,7 @@ static inline int arm32_encode_imm(int x)
 		unsigned int op = 0; \
 		op |= ARMCOND_AL << 28; \
 		op |= 0x8bd << 16; \
-		op |= 0xffe; \
+		op |= 0x4ffe; \
 		arm32_emit(ins, op); \
 	} while (0)
 
