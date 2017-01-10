@@ -17,6 +17,8 @@
  * Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301  USA
  */
 
+#define _BSD_SOURCE
+
 
 #include <stdio.h>
 #include <stdlib.h>
@@ -91,6 +93,7 @@ struct jit * jit_init()
 	r->optimizations = 0;
 
 	r->buf = NULL;
+	r->mmaped_buf = 0;
 	r->labels = NULL;
 	r->reg_al = jit_reg_allocator_create();
 	jit_enable_optimization(r, JIT_OPT_JOIN_ADDMUL | JIT_OPT_OMIT_FRAME_PTR | JIT_OPT_DEAD_CODE);
@@ -158,13 +161,12 @@ static int jit_imm_overflow(struct jit *jit, jit_op *op, long value)
 	if ((op->code == (JIT_LDX | IMM | UNSIGNED)) && (op->arg_size == 2)) return (value < -255) || (value > 255);;
 	if ((op->code == (JIT_STX | IMM)) && (op->arg_size == 2)) return (value < -255) || (value > 255);;
 
-
+	if (GET_OP(op) == JIT_MOD) return 1;
 	if ((GET_OP(op) == JIT_DIV) || (GET_OP(op) == JIT_MOD)) {
 		if (IS_IMM(op)) {
 			return !((value == 1) || (value == 2) || (value == 4) || (value == 8) || (value == 16) || (value == 32));
 		} else return 0;
 	}
-	if (GET_OP(op) == JIT_MOD) return 1;
 	return arm32_imm_rotate(value) == -1;
 #endif
 }
@@ -461,9 +463,11 @@ void jit_generate_code(struct jit * jit)
 
 	/* moves the code to its final destination */
 	int code_size = jit->ip - jit->buf;  
-	void * mem;
-	posix_memalign(&mem, sysconf(_SC_PAGE_SIZE), code_size);
-	mprotect(mem, code_size, PROT_READ | PROT_EXEC | PROT_WRITE);
+	//void * mem;
+	//posix_memalign(&mem, sysconf(_SC_PAGE_SIZE), code_size);
+	//mprotect(mem, code_size, PROT_READ | PROT_EXEC | PROT_WRITE);
+	void *mem = mmap(NULL, code_size, PROT_READ | PROT_EXEC | PROT_WRITE, MAP_ANON | MAP_PRIVATE, -1, 0);
+	if (mem == MAP_FAILED) perror("mmap");
 	memcpy(mem, jit->buf, code_size);
 	JIT_FREE(jit->buf);
 
@@ -471,6 +475,7 @@ void jit_generate_code(struct jit * jit)
 	long pos = jit->ip - jit->buf;
 	jit->buf = mem;
 	jit->ip = jit->buf + pos;
+	jit->mmaped_buf = 1;
 
 	jit_patch_external_calls(jit);
 	jit_patch_local_addrs(jit);
@@ -542,7 +547,10 @@ void jit_free(struct jit * jit)
 	jit_reg_allocator_free(jit->reg_al);
 	free_ops(jit_op_first(jit->ops));
 	free_labels(jit->labels);
-	if (jit->buf) JIT_FREE(jit->buf);
+	if (jit->buf) {
+		if (jit->mmaped_buf) munmap(jit->buf, jit->buf_capacity);
+		else JIT_FREE(jit->buf);
+	}
 	JIT_FREE(jit);
 }
 
