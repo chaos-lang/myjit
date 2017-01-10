@@ -372,7 +372,7 @@ static inline int arm32_encode_imm(int x)
 		unsigned int op = 0; \
 		op |= ARMCOND_AL << 28; \
 		op |= 0x92d << 16; \
-		op |= 0x4ffe; \
+		op |= 0x6ffe; \
 		arm32_emit(ins, op); \
 	} while (0)
 
@@ -382,7 +382,7 @@ static inline int arm32_encode_imm(int x)
 		unsigned int op = 0; \
 		op |= ARMCOND_AL << 28; \
 		op |= 0x8bd << 16; \
-		op |= 0x4ffe; \
+		op |= 0x6ffe; \
 		arm32_emit(ins, op); \
 	} while (0)
 
@@ -546,3 +546,39 @@ static inline int arm32_encode_imm(int x)
 	arm32_shift_imm(ins, ARMSHIFT_ASR, rd, rn, imm)
 
 
+#define arm32_stack_op(ins, _opcode, _imm) \
+	do { \
+		if (arm32_imm_rotate(_imm) == -1) { \
+			arm32_mov_reg_imm32(ins, ARMREG_R12, _imm); \
+			arm32_alu_reg_reg(ins, _opcode, ARMREG_SP, ARMREG_SP, ARMREG_R12); \
+		} else { \
+			arm32_alu_reg_imm(ins, _opcode, ARMREG_SP, ARMREG_SP, arm32_encode_imm(_imm)); \
+		} \
+	} while (0)
+
+	
+#define arm32_add_sp_imm(ins, imm)\
+	arm32_stack_op(ins, ARMOP_ADD, (imm))
+
+#define arm32_sub_sp_imm(ins, imm)\
+	arm32_stack_op(ins, ARMOP_SUB, (imm))
+
+#define arm32_ld_fp_imm(ins, dest, _imm) \
+	do { \
+		if (arm32_imm_rotate(_imm) == -1) { \
+			arm32_mov_reg_imm32(ins, ARMREG_R12, _imm); \
+			arm32_ld_reg(ins, dest, ARMREG_FP, ARMREG_R12); \
+		} else { \
+			arm32_ld_imm(ins, dest, ARMREG_FP, _imm); \
+		} \
+	} while (0)
+
+#define arm32_st_fp_imm(ins, dest, _imm) \
+	do { \
+		if (arm32_imm_rotate(_imm) == -1) { \
+			arm32_mov_reg_imm32(ins, ARMREG_R12, _imm); \
+			arm32_st_reg(ins, dest, ARMREG_FP, ARMREG_R12); \
+		} else { \
+			arm32_st_imm(ins, dest, ARMREG_FP, _imm); \
+		} \
+	} while (0)

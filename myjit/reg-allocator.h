@@ -141,6 +141,25 @@ static void assign_regs_for_args(struct jit_reg_allocator * al, jit_op * op)
 #ifdef JIT_ARCH_ARM32
 static void assign_regs_for_args(struct jit_reg_allocator * al, jit_op * op)
 {
+	// XXX: pododne s X86
+	struct jit_func_info * info = (struct jit_func_info *) op->arg[1];
+
+	int assoc_gp_regs = 0;
+	int assoc_fp_regs = 0;
+	for (int i = 0; i < info->general_arg_cnt + info->float_arg_cnt; i++) {
+		int isfp_arg = (info->args[i].type == JIT_FLOAT_NUM);
+		if (!isfp_arg && (assoc_gp_regs < al->gp_arg_reg_cnt)) {
+			rmap_assoc(op->regmap, jit_mkreg(JIT_RTYPE_INT, JIT_RTYPE_ARG, i), al->gp_arg_regs[assoc_gp_regs]);
+			assoc_gp_regs++;
+		}
+		if (isfp_arg) abort();
+/*
+		if (isfp_arg && (assoc_fp_regs < al->fp_arg_reg_cnt)) {
+			rmap_assoc(op->regmap, jit_mkreg(JIT_RTYPE_FLOAT, JIT_RTYPE_ARG, i), al->fp_arg_regs[assoc_fp_regs]);
+			assoc_fp_regs++;
+		}
+*/
+	}
 }
 #endif
 
@@ -202,7 +221,7 @@ skip:
  * If the hw. register which is used to return values is unused (i.e., it's
  * in the register pool) it associates this register with the given virtual register
  * and returns 1.
- * Tacitly assumes, that return register has been unassociated before function call.
+ * Tacitly assumes that the return register has been unassociated before function call.
  */
 static int assign_ret_reg(jit_op * op, jit_hw_reg * ret_reg)
 {
@@ -217,11 +236,16 @@ static int assign_getarg(jit_op * op, struct jit_reg_allocator * al)
 	struct jit_inp_arg * arg = &(al->current_func_info->args[arg_id]);
 	int reg_id = jit_mkreg(arg->type == JIT_FLOAT_NUM ? JIT_RTYPE_FLOAT : JIT_RTYPE_INT, JIT_RTYPE_ARG, arg_id);
 	if (!jit_set_get(op->live_out, reg_id)) {
+
+#if defined(JIT_ARCH_I386) || defined(JIT_ARCH_SPARC)
+		if ((arg->type != JIT_FLOAT_NUM) && (arg->size == REG_SIZE))
+#elif defined(JIT_ARCH_AMD64)
 		if (((arg->type != JIT_FLOAT_NUM) && (arg->size == REG_SIZE))
-#ifdef JIT_ARCH_AMD64
-				|| ((arg->type == JIT_FLOAT_NUM) && (arg->size == sizeof(double)))
+			|| ((arg->type == JIT_FLOAT_NUM) && (arg->size == sizeof(double))))
+#elif defined(JIT_ARCH_ARM32)
+		if (arg->type != JIT_FLOAT_NUM)
 #endif
-		   ) {
+		{
 			jit_hw_reg * hreg = rmap_get(op->regmap, reg_id);
 			if (hreg) {
 				rmap_unassoc(op->regmap, reg_id);
@@ -395,7 +419,7 @@ static void assign_regs(struct jit * jit, struct jit_op * op)
 		case JIT_PUTARG: skip = 1; break;
 		case JIT_FPUTARG: skip = 1; break;
 
-#ifdef JIT_ARCH_COMMON86
+#if defined(JIT_ARCH_COMMON86) || defined(JIT_ARCH_ARM32)
 		case JIT_RETVAL: skip = assign_ret_reg(op, al->ret_reg); break;
 #endif
 #ifdef JIT_ARCH_SPARC
