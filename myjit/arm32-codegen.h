@@ -24,9 +24,13 @@
  * Copyright 2011 Xamarin Inc
  */
 
+#include <stdint.h>
+
 #define is_imm8(x) (((x) & ~0xff) == 0)
 #define ror(x, shift) ((((unsigned int) (x)) >> (shift)) | ((unsigned int) (x) << (32 - (shift))))
 #define rol(x, shift) ((((unsigned int) (x)) << (shift)) | ((unsigned int) (x) >> (32 - (shift))))
+
+#define B(x, y) ((y) << x)
 
 typedef enum {
 	ARMREG_R0 = 0,
@@ -193,58 +197,48 @@ static inline int arm32_encode_imm(int x)
 {
 	int r = arm32_imm_rotate(x);
 	if (r == -1) abort();
-	return (r << 8) | ((((unsigned int)x) >> r) & 0xff);
+	return ((r / 2) << 8) | (rol(x, r) & 0xff);
 }
 
+#define ENSURE_INT(_i) ((intptr_t)(_i))
+
 #define arm32_emit(ins, op) \
-	*((unsigned int *)(ins)) = op; \
-	(ins) = (unsigned char *)((unsigned int*)(ins) + 1);
-
-
-#define arm32_encode_dataop(ins, _cond, _imm, _opcode, _s, _rd, _rn, _op2) \
 	do { \
-		unsigned int _op = 0; \
-		_op |= (_cond) << 28; \
-		_op |= (_imm) << 25; \
-		_op |= (_opcode) << 21; \
-		_op |= (_s) << 20; \
-		_op |= (_rn) << 16; \
-		_op |= (_rd) << 12; \
-		_op |= ((_op2) & 0xfff); \
-		arm32_emit((ins), _op); \
+		*((unsigned int *)(ins)) = op; \
+		(ins) = (unsigned char *)((unsigned int*)(ins) + 1); \
 	} while (0)
 
-#define arm32_encode_branch(ins, _cond, _link, _offset) \
-	do { \
-		unsigned int _op = 0; \
-		_op |= _cond << 28; \
-		_op |= 0x5 << 25; \
-		_op |= _link << 24; \
-		_op |= (_offset) & 0xffffff;\
-		arm32_emit((ins), _op); \
-	} while (0)
+
+#define arm32_emit_al(ins, op) arm32_emit(ins, B(28, ARMCOND_AL) | (op))
+
+
+#define arm32_encode_dataop(ins, _cond, _imm, _opcode, _s, _rd, _rn, _op2) arm32_emit(ins, \
+	  B(28, _cond)     \
+	| B(25, (_imm))    \
+	| B(21, (_opcode)) \
+	| B(20, _s) \
+	| B(16, _rn)\
+	| B(12, _rd)\
+	| B(0,  ((_op2) & 0xfff)))
+	
+#define arm32_encode_branch(ins, _cond, _link, _offset) arm32_emit(ins, \
+	  B(28, _cond) \
+	| B(25, 0x5)   \
+	| B(24, _link) \
+	| B(0,  (_offset) & 0xffffff))
 
 
 #define arm32_branch(ins, _cond, _offset) \
 	arm32_encode_branch(ins, _cond, 0, _offset - 2)
 
-#define arm32_bx(ins, _cond, _rn) \
-	do { \
-		unsigned int op = 0; \
-		op |= _cond << 28; \
-		op |= 0x12fff1 << 4; \
-		op |= _rn;\
-		arm32_emit(ins, op); \
-	} while (0)
+#define arm32_bx(ins, _cond, _rn) arm32_emit(ins, \
+	  B(28, _cond) \
+	| B(4,  0x12fff1) \
+	| B(0, _rn))
 
-#define arm32_blx_reg(ins, _rn) \
-	do { \
-		unsigned int op = 0; \
-		op |= ARMCOND_AL << 28; \
-		op |= 0x12fff3 << 4; \
-		op |= _rn;\
-		arm32_emit(ins, op); \
-	} while (0)
+#define arm32_blx_reg(ins, _rn) arm32_emit_al(ins, \
+	  B(4, 0x12fff3) \
+	| B(0, _rn))
 
 #define arm32_patch(target, pos) \
 	do { \
@@ -257,33 +251,38 @@ static inline int arm32_encode_imm(int x)
 
 #define arm32_cond_movw_reg_imm16(ins, _cond, _rd, _imm) \
 	do { \
-		unsigned int _op = 0; \
-		_op |= _cond << 28; \
-		_op |= 0x30 << 20; \
-		_op |= (_imm & 0xf000) << 4; \
-		_op |= (_rd) << 12; \
-		_op |= (_imm) & 0xfff; \
-		arm32_emit(ins, _op); \
+		unsigned __val = _imm; \
+		arm32_emit(ins, \
+			  B(28, _cond) \
+			| B(20, 0x30)  \
+			| B(12, _rd)   \
+			| B(4,  (__val & 0xf000)) \
+			| B(0,  (__val & 0xfff))); \
 	} while (0)
 
 #define arm32_cond_movt_reg_imm16(ins, _cond, _rd, _imm) \
 	do { \
-		unsigned int _op = 0; \
-		_op |= (_cond) << 28; \
-		_op |= 0x34 << 20; \
-		_op |= (_imm & 0xf000) << 4; \
-		_op |= (_rd) << 12; \
-		_op |= (_imm) & 0xfff; \
-		arm32_emit((ins), _op); \
+		unsigned __val = _imm; \
+		arm32_emit(ins, \
+			  B(28, _cond) \
+			| B(20, 0x34)  \
+			| B(12, _rd)   \
+			| B(4,  (__val & 0xf000)) \
+			| B(0,  (__val & 0xfff))); \
 	} while (0)
 
 #define arm32_cond_mov_reg_imm32(ins, _cond, _rd, _imm) \
+	/* FIXME: multiple access to _imm */ \
 	do { \
-		/*if ((_imm) & 0xffff)*/ arm32_cond_movw_reg_imm16(ins, _cond, _rd, ((unsigned int)(_imm)) & 0xffff); \
-		/*if ((_imm) & 0xffff0000)*/ arm32_cond_movt_reg_imm16(ins, _cond, _rd, ((unsigned int) (_imm)) >> 16 & 0xffff); \
-		/*if (!(_imm)) arm32_cond_movw_reg_imm16(ins, _cond, _rd, 0); */ \
+		if (arm32_imm_rotate(ENSURE_INT(_imm)) != -1) { \
+			arm32_cond_alu_reg_imm(ins, _cond, ARMOP_MOV, _rd, 0, ENSURE_INT(_imm));\
+		} else if (arm32_imm_rotate(~ENSURE_INT(_imm)) != -1) {\
+			arm32_cond_alu_reg_imm(ins, _cond, ARMOP_MVN, _rd, 0, ~ENSURE_INT(_imm));\
+		} else { \
+			arm32_cond_movw_reg_imm16(ins, _cond, _rd, ENSURE_INT(_imm) & 0xffff); \
+			arm32_cond_movt_reg_imm16(ins, _cond, _rd, ENSURE_INT(_imm) >> 16 & 0xffff); \
+		} \
 	} while (0)
-
 
 #define arm32_mov_reg_imm32(ins, _rd, _imm) \
 	arm32_cond_mov_reg_imm32(ins, ARMCOND_AL, _rd, _imm)
@@ -292,7 +291,10 @@ static inline int arm32_encode_imm(int x)
 	arm32_encode_dataop(ins, ARMCOND_AL, 0, _opcode, 0, _rd, _rn, _rm)
 
 #define arm32_alu_reg_imm(ins, _opcode, _rd, _rn, _imm) \
-	arm32_encode_dataop(ins, ARMCOND_AL, 1, _opcode, 0, _rd, _rn, arm32_encode_imm(_imm))
+	arm32_encode_dataop(ins, ARMCOND_AL, 1, _opcode, 0, _rd, _rn, arm32_encode_imm(ENSURE_INT(_imm)))
+
+#define arm32_cond_alu_reg_imm(ins, _cond, _opcode, _rd, _rn, _imm) \
+	arm32_encode_dataop(ins, _cond, 1, _opcode, 0, _rd, _rn, arm32_encode_imm(ENSURE_INT(_imm)))
 
 #define arm32_alucc_reg_reg(ins, _opcode, _cc, _rd, _rn, _rm) \
 	arm32_encode_dataop(ins, ARMCOND_AL, 0, _opcode, _cc, _rd, _rn, _rm)
@@ -303,44 +305,41 @@ static inline int arm32_encode_imm(int x)
 #define arm32_mov_reg_reg(ins, _rd, _rm) \
 	arm32_alu_reg_reg(ins, ARMOP_MOV, _rd, 0, _rm)
 
-#define arm32_cmp_reg_reg(ins, _rd, _rn, _rm) \
-	arm32_alucc_reg_reg(ins, ARMOP_CMP, 1, _rd, _rn, _rm)
+#define arm32_cmp_reg_reg(ins, _rd, _rm) \
+	arm32_alucc_reg_reg(ins, ARMOP_CMP, 1, 0, _rd, _rm)
 
-#define arm32_mul(ins, rd, rm, rn) \
-	do { \
-		int _op = ARMCOND_AL << 28; \
-		_op |= (rd) << 16; \
-		_op |= (rm) << 8; \
-		_op |= 0x9 << 4; \
-		_op |= (rn); \
-		arm32_emit(ins, _op);	\
-	} while (0) 
+#define arm32_cmp_reg_imm(ins, _rd, _imm) \
+	arm32_alucc_reg_imm(ins, ARMOP_CMP, 1, 0, _rd, _imm)
 
-#define arm32_hmul(ins, rd, rm, rn) \
-	do { \
-		int _op = ARMCOND_AL << 28; \
-		_op |= 0x75 << 20; \
-		_op |= (rd) << 16; \
-		_op |= 0xf << 12; \
-		_op |= (rm) << 8; \
-		_op |= 0x1 << 4; \
-		_op |= (rn); \
-		arm32_emit(ins, _op);	\
-	} while (0) 
+#define arm32_tst_reg_reg(ins, _rd, _rm) \
+	arm32_alucc_reg_reg(ins, ARMOP_TST, 1, 0, _rd, _rm)
 
+#define arm32_tst_reg_imm(ins, _rd, _imm) \
+	arm32_alucc_reg_imm(ins, ARMOP_TST, 1, 0, _rd, _imm)
 
-#define arm32_xdiv(ins, tag, rd, rn, rm) \
-	do { \
-		int _op = ARMCOND_AL << 28; \
-		_op |= tag << 20; \
-		_op |= (rd) << 16; \
-		_op |= 0xf << 12; \
-		_op |= (rm) << 8; \
-		_op |= 0x1 << 4; \
-		_op |= (rn); \
-		arm32_emit(ins, _op);	\
-	} while (0)
+#define arm32_nop(ins) arm32_emit_al(ins, 0x320f000)
 
+#define arm32_mul(ins, rd, rm, rn) arm32_emit_al(ins, \
+	  B(16, rd) \
+	| B(8,  rm) \
+	| B(4,  0x9) \
+	| B(0,  rn))
+
+#define arm32_hmul(ins, rd, rm, rn) arm32_emit_al(ins, \
+	  B(20, 0x75) \
+	| B(16, rd)   \
+	| B(12, 0xf)  \
+	| B(8, rm)    \
+	| B(4, 0x1)   \
+	| B(0, rn))
+
+#define arm32_xdiv(ins, tag, rd, rn, rm) arm32_emit_al(ins, \
+	  B(20, tag) \
+	| B(16, rd)  \
+	| B(12, 0xf) \
+	| B(8,  rm)  \
+	| B(4,  0x1) \
+	| B(0,  rn))
 
 #define arm32_sdiv(ins, rd, rn, rm) \
 	arm32_xdiv(ins, 0x71, rd, rn, rm);
@@ -349,58 +348,48 @@ static inline int arm32_encode_imm(int x)
 #define arm32_udiv(ins, rd, rn, rm) \
 	arm32_xdiv(ins, 0x73, rd, rn, rm);
 
-#define arm32_pushall(ins) \
-	do { \
-		unsigned int op = 0; \
-		op |= ARMCOND_AL << 28; \
-		op |= 0x92d << 16; \
-		op |= 0x4fff; \
-		arm32_emit(ins, op); \
-	} while (0)
+#define arm32_pushall(ins) arm32_emit_al(ins, \
+	  B(16, 0x92d) \
+	| B(0,  0x4fff)) 
 
-#define arm32_popall(ins) \
-	do { \
-		unsigned int op = 0; \
-		op |= ARMCOND_AL << 28; \
-		op |= 0x8bd << 16; \
-		op |= 0x4fff; \
-		arm32_emit(ins, op); \
-	} while (0)
+#define arm32_pushall_but_r0(ins) arm32_emit_al(ins, \
+	  B(16, 0x92d) \
+	| B(0,  0x6ffe)) 
 
-#define arm32_pushall_but_r0(ins) \
-	do { \
-		unsigned int op = 0; \
-		op |= ARMCOND_AL << 28; \
-		op |= 0x92d << 16; \
-		op |= 0x6ffe; \
-		arm32_emit(ins, op); \
-	} while (0)
+#define arm32_popall(ins) arm32_emit_al(ins, \
+	  B(16, 0x8bd) \
+	| B(0,  0x4fff))
 
+#define arm32_popall_but_r0(ins) arm32_emit_al(ins, \
+	  B(16, 0x8bd) \
+	| B(0,  0x6ffe))
 
-#define arm32_popall_but_r0(ins) \
-	do { \
-		unsigned int op = 0; \
-		op |= ARMCOND_AL << 28; \
-		op |= 0x8bd << 16; \
-		op |= 0x6ffe; \
-		arm32_emit(ins, op); \
-	} while (0)
-
-// FIXME: negative values
 #define arm32_single_data_transfer(ins, load, regs, byte, rd, rn, op2) \
+	/* FIXME: multiple access to _imm */ \
 	do { \
 		unsigned int op = 0; \
 		op |= ARMCOND_AL << 28; \
 		op |= 0x1 << 26; \
 		op |= regs << 25; /* imm */ \
 		op |= 0x1 << 24; /* post/pref index */ \
-		op |= 0x1 << 23; /* rn + rm */ \
 		op |= byte << 22; \
 		op |= 0x0 << 21; /* write */ \
 		op |= load << 20; /* load */ \
 		op |= rn << 16; \
 		op |= rd << 12; \
-		op |= op2; \
+		if (regs) { \
+			op |= 0x1 << 23; /* rn + rm */ \
+			op |= op2; \
+		} else { \
+			int _imm = ENSURE_INT(op2); \
+			if (arm32_imm_rotate(_imm) >= 0) { \
+				op |= arm32_encode_imm(op2); \
+				op |= 0x1 << 23; /* rn + imm */ \
+			} else if (arm32_imm_rotate(-_imm) >= 0) { \
+				op |= arm32_encode_imm(-_imm); \
+				op |= 0x0 << 23; /* rn - imm */ \
+			} else { printf("aaa\n"); abort(); } \
+		} \
 		arm32_emit(ins, op);\
 	} while (0) \
 
@@ -411,10 +400,10 @@ static inline int arm32_encode_imm(int x)
 	arm32_single_data_transfer(ins, 1, 1, 1, rd, rn, rm)
 
 #define arm32_ld_imm(ins, rd, rn, imm) \
-	arm32_single_data_transfer(ins, 1, 0, 0, rd, rn, arm32_encode_imm(imm))
+	arm32_single_data_transfer(ins, 1, 0, 0, rd, rn, imm)
 
 #define arm32_ldub_imm(ins, rd, rn, imm) \
-	arm32_single_data_transfer(ins, 1, 0, 1, rd, rn, arm32_encode_imm(imm))
+	arm32_single_data_transfer(ins, 1, 0, 1, rd, rn, imm)
 
 #define arm32_st_reg(ins, rd, rn, rm) \
 	arm32_single_data_transfer(ins, 0, 1, 0, rd, rn, rm)
@@ -423,53 +412,45 @@ static inline int arm32_encode_imm(int x)
 	arm32_single_data_transfer(ins, 0, 1, 1, rd, rn, rm)
 
 #define arm32_st_imm(ins, rd, rn, imm) \
-	arm32_single_data_transfer(ins, 0, 0, 0, rd, rn, arm32_encode_imm(imm))
+	arm32_single_data_transfer(ins, 0, 0, 0, rd, rn, imm)
 
 #define arm32_stb_imm(ins, rd, rn, imm) \
-	arm32_single_data_transfer(ins, 0, 0, 1, rd, rn, arm32_encode_imm(imm))
-
+	arm32_single_data_transfer(ins, 0, 0, 1, rd, rn, imm)
 
 #define arm32_signed_and_half_data_transfer_reg(ins, load, signed_value, halfword, rd, rn, rm) \
-	do { \
-		unsigned int op = 0; \
-		op |= ARMCOND_AL << 28; \
-		op |= 0x1 << 24; \
-		op |= 0x1 << 23; /* UP => rn + rm */ \
-		op |= 0x0 << 22; \
-		op |= 0x0 << 21; /* write */ \
-		op |= load << 20; /* load */ \
-		op |= rn << 16; \
-		op |= rd << 12; \
-		op |= 0x1 << 7; \
-		op |= signed_value << 6; \
-		op |= halfword << 5; \
-		op |= 0x1 << 4; \
-		op |= rm; \
-		arm32_emit(ins, op);\
-	} while (0) \
+arm32_emit_al(ins, \
+	  B(24, 0x1) \
+	| B(23, 0x1) /* UP => rn + rm */ \
+	| B(22, 0) \
+	| B(21, 0) /* write */ \
+	| B(20, load) \
+	| B(16, rn) \
+	| B(12, rd) \
+	| B(7,  0x1) \
+	| B(6,  signed_value) \
+	| B(5,  halfword) \
+	| B(4,  0x1) \
+	| B(0,  rm)) \
 
 #define arm32_signed_and_half_data_transfer_imm(ins, load, signed_value, halfword, rd, rn, imm) \
 	do { \
-		int _abs = (imm < 0 ? -imm : imm); \
-		unsigned int op = 0; \
-		op |= ARMCOND_AL << 28; \
-		op |= 0x1 << 24; \
-		op |= ((imm) >= 0) << 23; /* UP => rn + rm */ \
-		op |= 0x1 << 22; \
-		op |= 0x0 << 21; /* write */ \
-		op |= load << 20; /* load */ \
-		op |= rn << 16; \
-		op |= rd << 12; \
-		op |= ((_abs >> 4) & 0xf) << 8; \
-		op |= 0x1 << 7; \
-		op |= signed_value << 6; \
-		op |= halfword << 5; \
-		op |= 0x1 << 4; \
-		op |= (_abs & 0xf); \
-		arm32_emit(ins, op);\
-	} while (0) \
-
-
+		int __val = imm; \
+		int __absval = (__val < 0 ? -__val : __val); \
+		arm32_emit_al(ins,\
+			  B(24, 0x1) \
+			| B(23, __val >= 0) /* UP => rn + rm */ \
+			| B(22, 0x1) \
+			| B(21, 0x0) /* write */ \
+			| B(20, load) \
+			| B(16, rn) \
+			| B(12, rd) \
+			| B(8,  (__absval >> 4) & 0xf) \
+			| B(7,  0x1) \
+			| B(6,  signed_value) \
+			| B(5,  halfword) \
+			| B(4,  0x1) \
+			| B(0,  __absval & 0xf)); \
+	} while (0)
 
 #define arm32_ldsb_reg(ins, rd, rn, rm) \
 	arm32_signed_and_half_data_transfer_reg(ins, 1, 1, 0, rd, rn, rm)
@@ -495,22 +476,14 @@ static inline int arm32_encode_imm(int x)
 #define arm32_sth_imm(ins, rd, rn, imm) \
 	arm32_signed_and_half_data_transfer_imm(ins, 0, 0, 1, rd, rn, imm)
 
-
-
-#define arm32_shift_reg(ins, type, rd, rn, rs) \
-	do { \
-		unsigned _op = 0; \
-		_op |= ARMCOND_AL << 28; \
-		_op |= 0xd << 21; \
-		_op |= 0 << 20; /* s */  \
-		_op |= (rd << 12); \
-		_op |= type << 5; \
-		_op |= 1 << 4; /* reg */; \
-		_op |= rs << 8; \
-		_op |= rn; \
-		arm32_emit(ins, _op); \
-	} \
-	while (0)
+#define arm32_shift_reg(ins, type, rd, rn, rs) arm32_emit_al(ins, \
+	  B(21, 0xd) \
+	| B(20, 0) /* s */ \
+	| B(12, rd) \
+	| B(5,  type) \
+	| B(4,  1) /* reg */ \
+	| B(8,  rs) \
+	| B(0,  rn))
 
 #define arm32_lsh_reg(ins, rd, rn, rs) \
 	arm32_shift_reg(ins, ARMSHIFT_LSL, rd, rn, rs)
@@ -521,20 +494,14 @@ static inline int arm32_encode_imm(int x)
 #define arm32_rsa_reg(ins, rd, rn, rs) \
 	arm32_shift_reg(ins, ARMSHIFT_ASR, rd, rn, rs)
 
-#define arm32_shift_imm(ins, type, rd, rn, rs) \
-	do { \
-		unsigned _op = 0; \
-		_op |= ARMCOND_AL << 28; \
-		_op |= 0xd << 21; \
-		_op |= 0 << 20; /* s */  \
-		_op |= ((rd) << 12); \
-		_op |= type << 5; \
-		_op |= 0 << 4; /* imm */; \
-		_op |= ((rs) & 0x1f) << 7; \
-		_op |= rn; \
-		arm32_emit(ins, _op); \
-	} \
-	while (0)
+#define arm32_shift_imm(ins, type, rd, rn, imm) arm32_emit_al(ins, \
+	  B(21, 0xd) \
+	| B(20, 0) /* s */ \
+	| B(12, rd) \
+	| B(5,  type) \
+	| B(4,  0) /* imm */ \
+	| B(7,  (imm) & 0x1f) \
+	| B(0,  rn))
 
 #define arm32_lsh_imm(ins, rd, rn, imm) \
 	arm32_shift_imm(ins, ARMSHIFT_LSL, rd, rn, imm)
@@ -547,6 +514,7 @@ static inline int arm32_encode_imm(int x)
 
 
 #define arm32_stack_op(ins, _opcode, _imm) \
+	/* FIXME: multiple access to _imm */ \
 	do { \
 		if (arm32_imm_rotate(_imm) == -1) { \
 			arm32_mov_reg_imm32(ins, ARMREG_R12, _imm); \
@@ -564,6 +532,7 @@ static inline int arm32_encode_imm(int x)
 	arm32_stack_op(ins, ARMOP_SUB, (imm))
 
 #define arm32_ld_fp_imm(ins, dest, _imm) \
+	/* FIXME: multiple access to _imm */ \
 	do { \
 		if (arm32_imm_rotate(_imm) == -1) { \
 			arm32_mov_reg_imm32(ins, ARMREG_R12, _imm); \
@@ -574,6 +543,7 @@ static inline int arm32_encode_imm(int x)
 	} while (0)
 
 #define arm32_st_fp_imm(ins, dest, _imm) \
+	/* FIXME: multiple access to _imm */ \
 	do { \
 		if (arm32_imm_rotate(_imm) == -1) { \
 			arm32_mov_reg_imm32(ins, ARMREG_R12, _imm); \
@@ -582,3 +552,10 @@ static inline int arm32_encode_imm(int x)
 			arm32_st_imm(ins, dest, ARMREG_FP, _imm); \
 		} \
 	} while (0)
+
+
+#define arm32_sub_reg_reg(ins, rd, rn, rm) \
+	arm32_alu_reg_reg(ins, ARMOP_SUB, rd, rn, rm);
+
+#define arm32_and_reg_imm(ins, rd, rn, rm) \
+	arm32_alu_reg_imm(jit->ip, ARMOP_AND, rd, rn, rm)
