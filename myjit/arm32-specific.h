@@ -57,7 +57,7 @@ inline jit_hw_reg * rmap_get(jit_rmap * rmap, jit_value reg);
 
 static inline int GET_REG_POS(struct jit * jit, int r)
 {
-	struct jit_func_info * info = jit_current_func_info(jit);
+	//struct jit_func_info * info = jit_current_func_info(jit);
 	if (JIT_REG_SPEC(r) == JIT_RTYPE_REG) {
 		if (JIT_REG_TYPE(r) == JIT_RTYPE_INT) {
 			return - (/*info->allocai_mem + */ SHADOW_REG_SPACE + JIT_REG_ID(r) * REG_SIZE /*+ REG_SIZE*/);
@@ -126,10 +126,9 @@ void jit_init_arg_params(struct jit *jit, struct jit_func_info *info, int p, int
 static inline void emit_cond_op(struct jit *jit, struct jit_op *op, int cond, int imm)
 {
 	if (imm) {
-		// XXX: pouzit CMP
-		arm32_alucc_reg_imm(jit->ip, ARMOP_CMP, 1, 0, op->r_arg[1], op->r_arg[2]);
+		arm32_cmp_reg_imm(jit->ip, op->r_arg[1], op->r_arg[2]);
 	} else {
-		arm32_alucc_reg_reg(jit->ip, ARMOP_CMP, 1, 0, op->r_arg[1], op->r_arg[2]);
+		arm32_cmp_reg_reg(jit->ip, op->r_arg[1], op->r_arg[2]);
 	}
 
 	arm32_mov_reg_imm32(jit->ip, op->r_arg[0], 0);
@@ -139,10 +138,10 @@ static inline void emit_cond_op(struct jit *jit, struct jit_op *op, int cond, in
 static inline void emit_branch_op(struct jit * jit, struct jit_op * op, int cond, int imm)
 {
 	if (imm) {
-		// XXX: pouzit CMP
 		arm32_alucc_reg_imm(jit->ip, ARMOP_CMP, 1, 0, op->r_arg[1], op->r_arg[2]);
+		arm32_cmp_reg_imm(jit->ip, op->r_arg[1], op->r_arg[2]);
 	} else {
-		arm32_alucc_reg_reg(jit->ip, ARMOP_CMP, 1, 0, op->r_arg[1], op->r_arg[2]);
+		arm32_cmp_reg_reg(jit->ip, op->r_arg[1], op->r_arg[2]);
 	}
 
 	op->patch_addr = JIT_BUFFER_OFFSET(jit);
@@ -153,10 +152,9 @@ static inline void emit_branch_op(struct jit * jit, struct jit_op * op, int cond
 static inline void emit_branch_mask_op(struct jit * jit, struct jit_op * op, int cond, int imm)
 {
 	if (imm) {
-		// XXX: pouzit TEST
-		arm32_alucc_reg_imm(jit->ip, ARMOP_TST, 1, 0, op->r_arg[1], op->r_arg[2]);
+		arm32_tst_reg_imm(jit->ip, op->r_arg[1], op->r_arg[2]);
 	} else {
-		arm32_alucc_reg_reg(jit->ip, ARMOP_TST, 1, 0, op->r_arg[1], op->r_arg[2]);
+		arm32_tst_reg_reg(jit->ip, op->r_arg[1], op->r_arg[2]);
 	}
 
 	op->patch_addr = JIT_BUFFER_OFFSET(jit);
@@ -519,7 +517,7 @@ static void emit_trace_op(struct jit *jit, jit_op *op)
         arm32_mov_reg_imm32(jit->ip, ARMREG_R1, op);
         arm32_mov_reg_imm32(jit->ip, ARMREG_R2, op->r_arg[0]);
         arm32_mov_reg_imm32(jit->ip, ARMREG_R3, trace);
-        arm32_mov_reg_imm32(jit->ip, ARMREG_R4, ((void *)jit_trace_callback));
+        arm32_mov_reg_imm32(jit->ip, ARMREG_R4, JIT_PROC_VALUE(jit_trace_callback));
         arm32_blx_reg(jit->ip, ARMREG_R4);
 
         arm32_popall(jit->ip);
@@ -667,7 +665,7 @@ void jit_gen_op(struct jit * jit, struct jit_op * op)
 			// ARM has different semantics of the carry flag wrt. to borrowing
 			// to make this consistent across multiple platforms, we need to set
 			// the carry flag separately
-			arm32_cmp_reg_reg(jit->ip, a1, a3, a2);
+			arm32_cmp_reg_reg(jit->ip, a3, a2);
 			break;
 		// FIXME: should set carry flag
 		case JIT_SUBX: 
@@ -704,9 +702,9 @@ void jit_gen_op(struct jit * jit, struct jit_op * op)
 			if (IS_SIGNED(op)) {
 				if (IS_IMM(op)) {
 					switch (a3) {
-						case 2: arm32_rsa_imm(jit->ip, a1, a2, 1); goto op_complete;
-						case 4: arm32_rsa_imm(jit->ip, a1, a2, 2); goto op_complete;
-						case 8: arm32_rsa_imm(jit->ip, a1, a2, 3); goto op_complete;
+						case 2:  arm32_rsa_imm(jit->ip, a1, a2, 1); goto op_complete;
+						case 4:  arm32_rsa_imm(jit->ip, a1, a2, 2); goto op_complete;
+						case 8:  arm32_rsa_imm(jit->ip, a1, a2, 3); goto op_complete;
 						case 16: arm32_rsa_imm(jit->ip, a1, a2, 4); goto op_complete;
 						case 32: arm32_rsa_imm(jit->ip, a1, a2, 5); goto op_complete;
 					}
@@ -716,9 +714,9 @@ void jit_gen_op(struct jit * jit, struct jit_op * op)
 			} else { // UNSIGNED
 				if (IS_IMM(op)) {
 					switch (a3) {
-						case 2: arm32_rsh_imm(jit->ip, a1, a2, 1); goto op_complete;
-						case 4: arm32_rsh_imm(jit->ip, a1, a2, 2); goto op_complete;
-						case 8: arm32_rsh_imm(jit->ip, a1, a2, 3); goto op_complete;
+						case 2:  arm32_rsh_imm(jit->ip, a1, a2, 1); goto op_complete;
+						case 4:  arm32_rsh_imm(jit->ip, a1, a2, 2); goto op_complete;
+						case 8:  arm32_rsh_imm(jit->ip, a1, a2, 3); goto op_complete;
 						case 16: arm32_rsh_imm(jit->ip, a1, a2, 4); goto op_complete;
 						case 32: arm32_rsh_imm(jit->ip, a1, a2, 5); goto op_complete;
 					}
@@ -731,12 +729,11 @@ void jit_gen_op(struct jit * jit, struct jit_op * op)
 		case JIT_MOD: 
 			if (IS_IMM(op)) {
 				switch (a3) {
-					// XXX: udelat operaci and
-					case 2:  arm32_alu_reg_imm(jit->ip, ARMOP_AND, a1, a2, 0x01); goto op_complete;
-					case 4:  arm32_alu_reg_imm(jit->ip, ARMOP_AND, a1, a2, 0x03); goto op_complete;
-					case 8:  arm32_alu_reg_imm(jit->ip, ARMOP_AND, a1, a2, 0x07); goto op_complete;
-					case 16: arm32_alu_reg_imm(jit->ip, ARMOP_AND, a1, a2, 0x0f); goto op_complete;
-					case 32: arm32_alu_reg_imm(jit->ip, ARMOP_AND, a1, a2, 0x1f); goto op_complete;
+					case 2:  arm32_and_reg_imm(jit->ip, a1, a2, 0x01); goto op_complete;
+					case 4:  arm32_and_reg_imm(jit->ip, a1, a2, 0x03); goto op_complete;
+					case 8:  arm32_and_reg_imm(jit->ip, a1, a2, 0x07); goto op_complete;
+					case 16: arm32_and_reg_imm(jit->ip, a1, a2, 0x0f); goto op_complete;
+					case 32: arm32_and_reg_imm(jit->ip, a1, a2, 0x1f); goto op_complete;
 				}
 			}
 
@@ -744,8 +741,7 @@ void jit_gen_op(struct jit * jit, struct jit_op * op)
 
 			arm32_sdiv(jit->ip, ARMREG_R12, a2, a3);
 			arm32_mul(jit->ip, ARMREG_R12, a3, ARMREG_R12);
-			// XXX: udelat operaci sub
-			arm32_alu_reg_reg(jit->ip, ARMOP_SUB, a1, a2, ARMREG_R12);
+			arm32_sub_reg_reg(jit->ip, a1, a2, ARMREG_R12);
 
 			break;
 
@@ -819,14 +815,13 @@ void jit_gen_op(struct jit * jit, struct jit_op * op)
 				arm32_pushall(jit->ip);
 				if (!IS_IMM(op)) arm32_mov_reg_reg(jit->ip, ARMREG_R1, op->r_arg[1]);
 				arm32_mov_reg_imm32(jit->ip, ARMREG_R0, op->r_arg[0]);
-				arm32_mov_reg_imm32(jit->ip, ARMREG_R2, (unsigned long)((void *)printf));
+				arm32_mov_reg_imm32(jit->ip, ARMREG_R2, JIT_PROC_VALUE(printf));
 				arm32_blx_reg(jit->ip, ARMREG_R2);
 				arm32_popall(jit->ip);
 				break;
 		case JIT_TRACE: emit_trace_op(jit, op); break;
 
 		case JIT_ALLOCA: break;
-/*
 		case JIT_CODE_ALIGN: { 
 				int count = op->arg[0]; 
 				assert(!(count % 4));
@@ -835,21 +830,21 @@ void jit_gen_op(struct jit * jit, struct jit_op * op)
 						*jit->ip = 0;
 						jit->ip++;
 					}
-				        else sparc_nop(jit->ip);
+				        else arm32_nop(jit->ip);
 				}	
 			}
 			break;
 
+
 		case JIT_REF_CODE:
 		case JIT_REF_DATA:
 			op->patch_addr = JIT_BUFFER_OFFSET(jit);
-			sparc_set32x(jit->ip, 0xdeadbeef, a1);
+			arm32_mov_reg_imm32(jit->ip, a1, 0xdeadbeef);
 			break;
-
+/*
 		case JIT_MEMCPY:
 			emit_memcpy(jit, op, a1, a2, a3);
 			break;
-
 */
 
 		 // platform independent opcodes handled in the jitlib-core.c
@@ -870,7 +865,6 @@ op_complete:
 				jit->current_func = op;
 				struct jit_func_info * info = jit_current_func_info(jit);
 				op->patch_addr = JIT_BUFFER_OFFSET(jit);
-				int stack_mem = jit_value_align(stack_mem, 8);
 				arm32_pushall_but_r0(jit->ip);
 				arm32_mov_reg_reg(jit->ip, ARMREG_FP, ARMREG_SP);
 				arm32_sub_sp_imm(jit->ip, frame_size(jit, info));
@@ -905,7 +899,7 @@ op_complete:
 				switch (op->arg_size) {
 					case 1: arm32_ldsb_imm(jit->ip, a1, a2, a3); break;
 					case 2: arm32_ldsh_imm(jit->ip, a1, a2, a3); break;
-					case 4: arm32_ld_reg(jit->ip, a1, a2, a3); break;
+					case 4: arm32_ld_imm(jit->ip, a1, a2, a3); break;
 					default: abort();
 				} break;
 
@@ -913,7 +907,7 @@ op_complete:
 				switch (op->arg_size) {
 					case 1: arm32_ldub_imm(jit->ip, a1, a2, a3); break;
 					case 2: arm32_lduh_imm(jit->ip, a1, a2, a3); break;
-					case 4: arm32_ld_reg(jit->ip, a1, a2, a3); break;
+					case 4: arm32_ld_imm(jit->ip, a1, a2, a3); break;
 					default: abort();
 				} break;
 

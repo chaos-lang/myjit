@@ -161,6 +161,11 @@ static int jit_imm_overflow(struct jit *jit, jit_op *op, long value)
 	if ((op->code == (JIT_LDX | IMM | UNSIGNED)) && (op->arg_size == 2)) return (value < -255) || (value > 255);;
 	if ((op->code == (JIT_STX | IMM)) && (op->arg_size == 2)) return (value < -255) || (value > 255);;
 
+
+	if ((op->code == (JIT_LDX | IMM | UNSIGNED)) && (op->arg_size == 1) && (arm32_imm_rotate(-value) >= 0)) return 0;
+	if ((op->code == (JIT_LDX | IMM | UNSIGNED)) && (op->arg_size == 4) && (arm32_imm_rotate(-value) >= 0)) return 0;
+	if ((op->code == (JIT_LDX | IMM | SIGNED)) && (op->arg_size == 4) && (arm32_imm_rotate(-value) >= 0)) return 0;
+
 	if (GET_OP(op) == JIT_MOD) return 1;
 	if ((GET_OP(op) == JIT_DIV) || (GET_OP(op) == JIT_MOD)) {
 		if (IS_IMM(op)) {
@@ -466,7 +471,7 @@ void jit_generate_code(struct jit * jit)
 	//void * mem;
 	//posix_memalign(&mem, sysconf(_SC_PAGE_SIZE), code_size);
 	//mprotect(mem, code_size, PROT_READ | PROT_EXEC | PROT_WRITE);
-	void *mem = mmap(NULL, code_size, PROT_READ | PROT_EXEC | PROT_WRITE, MAP_ANON | MAP_PRIVATE, -1, 0);
+	void *mem = mmap(NULL, jit->buf_capacity, PROT_READ | PROT_EXEC | PROT_WRITE, MAP_ANON | MAP_PRIVATE, -1, 0);
 	if (mem == MAP_FAILED) perror("mmap");
 	memcpy(mem, jit->buf, code_size);
 	JIT_FREE(jit->buf);

@@ -167,7 +167,7 @@ static void prepare_registers_for_call(struct jit_reg_allocator * al, jit_op * o
 {
 	jit_value r, reg;
 	jit_hw_reg * hreg = NULL;
-#ifdef JIT_ARCH_COMMON86
+#if defined(JIT_ARCH_COMMON86) || defined(JIT_ARCH_ARM32)
 	if (al->ret_reg) hreg = rmap_is_associated(op->regmap, al->ret_reg->id, 0, &r);
 	if (hreg) {
 		// checks whether there is a free callee-saved register
