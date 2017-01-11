@@ -88,6 +88,19 @@ typedef struct jit_label {
 
 typedef jit_value jit_reg;
 
+union jit_proc_value_alias {       
+        void (*ptr)();
+        jit_value num;
+}; 
+
+#define JIT_PROC_VALUE(_f) jit_proc_value((void (*)(void)) (_f))
+static inline jit_value jit_proc_value(void (*f)(void))
+{
+	union jit_proc_value_alias alias;
+	alias.ptr = f;
+	return alias.num;
+}
+
 // _type: INT/FP (1 bit)
 // _spec: register, alias, immediate, argument's shadow space (2 bits)
 // _part: allows to split one virtual register into two hw. registers (implicitly 0) (1 bit)
