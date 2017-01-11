@@ -25,25 +25,21 @@
 #define CPU_DETECT_H
 
 // pretty lousy processor detection
-#ifdef __i386__
+#if defined(__i386__)
 	#define JIT_ARCH_I386
 	#define JIT_ARCH_COMMON86
-#else
-	#ifdef __sparc__
-		#define JIT_ARCH_SPARC
-	#else
-		#ifdef __arm__
-			#define JIT_ARCH_ARM32
-		#else
-			#define JIT_ARCH_AMD64
-			#define JIT_ARCH_COMMON86
-		#endif
-	#endif
+#elif defined(__amd64__)
+	#define JIT_ARCH_AMD64
+	#define JIT_ARCH_COMMON86
+#elif defined(__sparc__)
+	#define JIT_ARCH_SPARC
+#elif defined(__arm__)
+	#define JIT_ARCH_ARM32
 #endif
 
 // enable this to test register allocation
 #define JIT_REGISTER_TEST
-#undef JIT_REGISTER_TEST
+//#undef JIT_REGISTER_TEST
 
 /*
  * i386 related macros
