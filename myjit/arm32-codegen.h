@@ -240,6 +240,11 @@ static inline int arm32_encode_imm(int x)
 	  B(4, 0x12fff3) \
 	| B(0, _rn))
 
+#define arm32_bl_imm(ins, _imm) arm32_emit_al(ins, \
+	  B(24, 0xb) \
+	| B(0, (_imm) & 0xffffff))
+
+
 #define arm32_patch(target, pos) \
 	do { \
 		long __p =  ((long)(pos)) >> 2; \
@@ -272,15 +277,15 @@ static inline int arm32_encode_imm(int x)
 	} while (0)
 
 #define arm32_cond_mov_reg_imm32(ins, _cond, _rd, _imm) \
-	/* FIXME: multiple access to _imm */ \
 	do { \
-		if (arm32_imm_rotate(ENSURE_INT(_imm)) != -1) { \
-			arm32_cond_alu_reg_imm(ins, _cond, ARMOP_MOV, _rd, 0, ENSURE_INT(_imm));\
-		} else if (arm32_imm_rotate(~ENSURE_INT(_imm)) != -1) {\
-			arm32_cond_alu_reg_imm(ins, _cond, ARMOP_MVN, _rd, 0, ~ENSURE_INT(_imm));\
+		int __imm = ENSURE_INT(_imm); \
+		if (arm32_imm_rotate(ENSURE_INT(__imm)) != -1) { \
+			arm32_cond_alu_reg_imm(ins, _cond, ARMOP_MOV, _rd, 0, __imm);\
+		} else if (arm32_imm_rotate(~__imm) != -1) {\
+			arm32_cond_alu_reg_imm(ins, _cond, ARMOP_MVN, _rd, 0, ~__imm);\
 		} else { \
-			arm32_cond_movw_reg_imm16(ins, _cond, _rd, ENSURE_INT(_imm) & 0xffff); \
-			arm32_cond_movt_reg_imm16(ins, _cond, _rd, ENSURE_INT(_imm) >> 16 & 0xffff); \
+			arm32_cond_movw_reg_imm16(ins, _cond, _rd, __imm & 0xffff); \
+			arm32_cond_movt_reg_imm16(ins, _cond, _rd, __imm >> 16 & 0xffff); \
 		} \
 	} while (0)
 
@@ -365,33 +370,32 @@ static inline int arm32_encode_imm(int x)
 	| B(0,  0x6ffe))
 
 #define arm32_single_data_transfer(ins, load, regs, byte, rd, rn, op2) \
-	/* FIXME: multiple access to _imm */ \
 	do { \
-		unsigned int op = 0; \
-		op |= ARMCOND_AL << 28; \
-		op |= 0x1 << 26; \
-		op |= regs << 25; /* imm */ \
-		op |= 0x1 << 24; /* post/pref index */ \
-		op |= byte << 22; \
-		op |= 0x0 << 21; /* write */ \
-		op |= load << 20; /* load */ \
-		op |= rn << 16; \
-		op |= rd << 12; \
+		unsigned int op = \
+		  B(28, ARMCOND_AL) \
+		| B(26, 0x1)  \
+		| B(25, regs) \
+		| B(24, 0x1) /* post/pre index*/ \
+		| B(22, byte) \
+		| B(21, 0x0) /* write */ \
+		| B(20, load) \
+		| B(16, rn) \
+		| B(12, rd); \
 		if (regs) { \
-			op |= 0x1 << 23; /* rn + rm */ \
-			op |= op2; \
+			op |= B(23, 0x1); /* rn + rm */ \
+			op |= B(0, op2); \
 		} else { \
 			int _imm = ENSURE_INT(op2); \
 			if (arm32_imm_rotate(_imm) >= 0) { \
+				op |= B(23, 0x1); /* rn + rm */ \
 				op |= arm32_encode_imm(op2); \
-				op |= 0x1 << 23; /* rn + imm */ \
 			} else if (arm32_imm_rotate(-_imm) >= 0) { \
+				op |= B(23, 0x0); /* rn - imm */ \
 				op |= arm32_encode_imm(-_imm); \
-				op |= 0x0 << 23; /* rn - imm */ \
-			} else { printf("aaa\n"); abort(); } \
+			} else { abort(); } \
 		} \
 		arm32_emit(ins, op);\
-	} while (0) \
+	} while (0) 
 
 #define arm32_ld_reg(ins, rd, rn, rm) \
 	arm32_single_data_transfer(ins, 1, 1, 0, rd, rn, rm)
@@ -514,13 +518,13 @@ arm32_emit_al(ins, \
 
 
 #define arm32_stack_op(ins, _opcode, _imm) \
-	/* FIXME: multiple access to _imm */ \
 	do { \
-		if (arm32_imm_rotate(_imm) == -1) { \
-			arm32_mov_reg_imm32(ins, ARMREG_R12, _imm); \
+		int __immval = _imm; \
+		if (arm32_imm_rotate(__immval) == -1) { \
+			arm32_mov_reg_imm32(ins, ARMREG_R12, __immval); \
 			arm32_alu_reg_reg(ins, _opcode, ARMREG_SP, ARMREG_SP, ARMREG_R12); \
 		} else { \
-			arm32_alu_reg_imm(ins, _opcode, ARMREG_SP, ARMREG_SP, arm32_encode_imm(_imm)); \
+			arm32_alu_reg_imm(ins, _opcode, ARMREG_SP, ARMREG_SP, arm32_encode_imm(__immval)); \
 		} \
 	} while (0)
 
@@ -532,24 +536,24 @@ arm32_emit_al(ins, \
 	arm32_stack_op(ins, ARMOP_SUB, (imm))
 
 #define arm32_ld_fp_imm(ins, dest, _imm) \
-	/* FIXME: multiple access to _imm */ \
 	do { \
-		if (arm32_imm_rotate(_imm) == -1) { \
-			arm32_mov_reg_imm32(ins, ARMREG_R12, _imm); \
-			arm32_ld_reg(ins, dest, ARMREG_FP, ARMREG_R12); \
+		int __disp = _imm; \
+		if ((arm32_imm_rotate(__disp) >= 0) || (arm32_imm_rotate(-__disp) >= 0))  { \
+			arm32_ld_imm(ins, dest, ARMREG_FP, __disp); \
 		} else { \
-			arm32_ld_imm(ins, dest, ARMREG_FP, _imm); \
+			arm32_mov_reg_imm32(ins, ARMREG_R12, __disp); \
+			arm32_ld_reg(ins, dest, ARMREG_FP, ARMREG_R12); \
 		} \
 	} while (0)
 
 #define arm32_st_fp_imm(ins, dest, _imm) \
-	/* FIXME: multiple access to _imm */ \
 	do { \
-		if (arm32_imm_rotate(_imm) == -1) { \
-			arm32_mov_reg_imm32(ins, ARMREG_R12, _imm); \
-			arm32_st_reg(ins, dest, ARMREG_FP, ARMREG_R12); \
+		int __disp = _imm; \
+		if ((arm32_imm_rotate(__disp) >= 0) || (arm32_imm_rotate(-__disp) >= 0))  { \
+			arm32_st_imm(ins, dest, ARMREG_FP, __disp); \
 		} else { \
-			arm32_st_imm(ins, dest, ARMREG_FP, _imm); \
+			arm32_mov_reg_imm32(ins, ARMREG_R12, __disp); \
+			arm32_st_reg(ins, dest, ARMREG_FP, ARMREG_R12); \
 		} \
 	} while (0)
 
