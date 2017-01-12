@@ -382,8 +382,8 @@ static void associate_register(struct jit_reg_allocator * al, jit_op * op, int i
 			rmap_assoc(op->regmap, op->arg[i], reg);
 
 			op->r_arg[i] = reg->id;
-//			if (jit_set_get(op->live_in, op->arg[i]))
-//				load_reg(op, rmap_get(op->regmap, op->arg[i]), op->arg[i]);
+			if (jit_set_get(op->live_in, op->arg[i]))
+				load_reg(op, rmap_get(op->regmap, op->arg[i]), op->arg[i]);
 		} else op->r_arg[i] = -1;
 	}
 }
@@ -587,7 +587,7 @@ static inline void branch_adjustment(struct jit * jit, jit_op * op)
 	jit_rmap * tgt_regmap = op->jmp_addr->regmap;
 
 	//if (!rmap_equal(op, cur_regmap, tgt_regmap)) {
-	if (!rmap_subset(op, tgt_regmap, cur_regmap)) {
+	if (!rmap_subset(op, tgt_regmap->map, cur_regmap->map)) {
 		switch (GET_OP(op)) {
 			case JIT_BEQ: op->code = JIT_BNE | (op->code & 0x7); break;
 			case JIT_BGT: op->code = JIT_BLE | (op->code & 0x7); break;
