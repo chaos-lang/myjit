@@ -349,9 +349,18 @@ static inline int arm32_encode_imm(int x)
 #define arm32_sdiv(ins, rd, rn, rm) \
 	arm32_xdiv(ins, 0x71, rd, rn, rm);
 
-
 #define arm32_udiv(ins, rd, rn, rm) \
 	arm32_xdiv(ins, 0x73, rd, rn, rm);
+
+#define arm32_push_reg(ins, reg) arm32_emit_al(ins, \
+	  B(16, 0x52d) \
+	| B(12, reg) \
+	| B(0,  0x4))
+
+#define arm32_pop_reg(ins, reg) arm32_emit_al(ins, \
+	  B(16, 0x49d) \
+	| B(12, reg) \
+	| B(0,  0x4))
 
 #define arm32_pushall(ins) arm32_emit_al(ins, \
 	  B(16, 0x92d) \

@@ -34,7 +34,7 @@ static inline void jit_flw_initialize(struct jit * jit)
 			func_info = (struct jit_func_info *)op->arg[1];
 		}
 
-#if defined(JIT_ARCH_AMD64) || defined(JIT_ARCH_SPARC)
+#if defined(JIT_ARCH_AMD64) || defined(JIT_ARCH_SPARC) || defined(JIT_ARCH_ARM32)
 		if (GET_OP(op) == JIT_GETARG) {
 			int arg_id = op->arg[1];
 			if (func_info->args[arg_id].type != JIT_FLOAT_NUM) {
@@ -53,7 +53,7 @@ static inline void jit_flw_initialize(struct jit * jit)
 
 static inline void flw_analyze_prolog(struct jit * jit, jit_op * op, struct jit_func_info * func_info)
 {
-#if defined(JIT_ARCH_AMD64) 
+#if defined(JIT_ARCH_AMD64) || defined(JIT_ARCH_ARM32)
 	for (int i = 0; i < func_info->general_arg_cnt + func_info->float_arg_cnt; i++) {
 		if (func_info->args[i].type == JIT_FLOAT_NUM) {
 			jit_set_remove(op->live_in, jit_mkreg(JIT_RTYPE_FLOAT, JIT_RTYPE_ARG, i)); 
