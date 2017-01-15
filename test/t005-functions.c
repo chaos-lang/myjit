@@ -336,8 +336,39 @@ DEFINE_TEST(test8)
 	ASSERT_EQ(15, s.sum);
 	ASSERT_EQ(3, s.avg);
 	return 0;
-
 }
+
+// computes factorial recursively
+DEFINE_TEST(test9)
+{
+	plfus f1;
+
+	jit_label *facfn  = jit_get_label(p);
+
+	jit_prolog(p, &f1);
+	jit_declare_arg(p, JIT_UNSIGNED_NUM, sizeof(short));
+	jit_getarg(p, R(0), 0);
+
+	jit_op *ret1 = jit_blei(p, JIT_FORWARD, R(0), 0);
+	jit_subi(p, R(1), R(0), 1);
+	jit_prepare(p);
+	jit_putargr(p, R(1));
+	jit_call(p, facfn);
+	jit_retval(p, R(2));
+	jit_mulr(p, R(3), R(2), R(0));
+	jit_retr(p, R(3));
+
+	jit_patch(p, ret1);
+	jit_reti(p, 1);
+
+	JIT_GENERATE_CODE(p);
+
+	ASSERT_EQ(1, f1(1));
+	ASSERT_EQ(120, f1(5));
+	ASSERT_EQ(720, f1(6));
+	return 0;
+}
+
 
 void test_setup()
 {
@@ -350,4 +381,5 @@ void test_setup()
 	SETUP_TEST(test6);
 	SETUP_TEST(test7);
 	SETUP_TEST(test8);
+	SETUP_TEST(test9);
 }
