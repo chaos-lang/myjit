@@ -381,13 +381,12 @@ void jit_patch_external_calls(struct jit * jit)
 
 void jit_patch_local_addrs(struct jit *jit)
 {
-/*
 	for (jit_op * op = jit_op_first(jit->ops); op != NULL; op = op->next) {
 	
 		if ((GET_OP(op) == JIT_REF_CODE) || (GET_OP(op) == JIT_REF_DATA)) {
 			unsigned char *buf = jit->buf + (long) op->patch_addr;
 			jit_value addr = jit_is_label(jit, (void *)op->arg[1]) ? ((jit_label *)op->arg[1])->pos : op->arg[1];
-			sparc_set32x(buf, jit->buf + addr, op->r_arg[0]);
+			arm32_mov_reg_imm32x(buf, op->r_arg[0], jit->buf + addr);
 		}
 
 		if ((GET_OP(op) == JIT_DATA_REF_CODE) || (GET_OP(op) == JIT_DATA_REF_DATA)) {
@@ -396,7 +395,6 @@ void jit_patch_local_addrs(struct jit *jit)
 			*((jit_value *)buf) = (jit_value) (jit->buf + addr);
 		}
 	}
-*/
 }
 
 /**
@@ -765,8 +763,7 @@ void jit_gen_op(struct jit * jit, struct jit_op * op)
 
 		case JIT_JMP:
 			op->patch_addr = JIT_BUFFER_OFFSET(jit);
-			// FIXME: register user
-			if (op->code & REG) abort(); //sparc_jmp(jit->ip, a1, sparc_g0);
+			if (op->code & REG) arm32_bx(jit->ip, ARMCOND_AL, a1);
 			else arm32_branch(jit->ip, ARMCOND_AL, JIT_GET_ADDR(jit, op->r_arg[0]));
 			break;
 

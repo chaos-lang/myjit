@@ -291,6 +291,12 @@ static inline int arm32_encode_imm(int x)
 
 #define arm32_mov_reg_imm32(ins, _rd, _imm) \
 	arm32_cond_mov_reg_imm32(ins, ARMCOND_AL, _rd, _imm)
+
+#define arm32_mov_reg_imm32x(ins, _rd, _imm) do { \
+		int __imm = ENSURE_INT(_imm); \
+		arm32_cond_movw_reg_imm16(ins, ARMCOND_AL, _rd, __imm & 0xffff); \
+		arm32_cond_movt_reg_imm16(ins, ARMCOND_AL, _rd, __imm >> 16 & 0xffff); \
+	} while (0)
 	
 #define arm32_alu_reg_reg(ins, _opcode, _rd, _rn, _rm) \
 	arm32_encode_dataop(ins, ARMCOND_AL, 0, _opcode, 0, _rd, _rn, _rm)
