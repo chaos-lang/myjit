@@ -168,8 +168,8 @@ DEFINE_TEST(test20)
 DEFINE_TEST(test30)
 {
 	plfv f1;
-	static char x[] = { -2, -3, -4, -5, -6, -7, -8, -9, -10 };
-	static char y[] = { 10, 20, 30, 40, 50, 60, 70, 80, 90, 100 };
+	static signed char x[] = { -2, -3, -4, -5, -6, -7, -8, -9, -10 };
+	static signed char y[] = { 10, 20, 30, 40, 50, 60, 70, 80, 90, 100 };
 
 	jit_prolog(p, &f1);
 	jit_movi(p, R(0), x + 2);
@@ -198,8 +198,8 @@ DEFINE_TEST(test30)
 DEFINE_TEST(test31)
 {
 	plfv f1;
-	static char x[] = { -2, -3, -4, -5, -6, -7, -8, -9, -10 };
-	static char y[] = { 10, 20, 30, 40, 50, 60, 70, 80, 90, 100 };
+	static signed char x[] = { -2, -3, -4, -5, -6, -7, -8, -9, -10 };
+	static signed char y[] = { 10, 20, 30, 40, 50, 60, 70, 80, 90, 100 };
 
 	jit_prolog(p, &f1);
 	jit_movi(p, R(0), x + 2);
@@ -229,8 +229,8 @@ DEFINE_TEST(test31)
 DEFINE_TEST(test32)
 {
 	plfv f1;
-	static char x[] = { -2, -3, -4, -5, -6, -7, -8, -9, -10 };
-	static char y[] = { 10, 20, 30, 40, 50, 60, 70, 80, 90, 100 };
+	static signed char x[] = { -2, -3, -4, -5, -6, -7, -8, -9, -10 };
+	static signed char y[] = { 10, 20, 30, 40, 50, 60, 70, 80, 90, 100 };
 
 	jit_prolog(p, &f1);
 	jit_movi(p, R(0), x + 2);

@@ -564,26 +564,51 @@ static void emit_sparc_floor(struct jit * jit, long a1, long a2, int floor)
 	sparc_add(jit->ip, FALSE, a1, sparc_g1, a1);
 }
 
-static void emit_memcpy(struct jit * jit, jit_op * op, jit_value a1, jit_value a2, jit_value a3)
+*/
+static void emit_memcpy(struct jit *jit, jit_op *op, jit_value a1, jit_value a2, jit_value a3)
 {
-	int scrapreg = sparc_g1;
-	int counterreg = sparc_g2;
+	int scrapreg = ARMREG_R12;
+	int counterreg = -1;
+	int counterreg_in_use = 0;
 
-	if (IS_IMM(op)) sparc_set(jit->ip, a3, counterreg);
-	else {
-		if (!jit_set_get(op->live_out, op->arg[2])) counterreg = a3;
-		else sparc_mov_reg_reg(jit->ip, a3, sparc_g2);
+
+	if (IS_IMM(op)) {
+		counterreg = ARMREG_R9;
+		counterreg_in_use = jit_reg_in_use(op, counterreg, 0);
+		if (counterreg_in_use) arm32_push_reg(jit->ip, counterreg);
+		arm32_mov_reg_imm32(jit->ip, counterreg, a3);
+	} else {
+		if (!jit_set_get(op->live_out, op->arg[2])) {
+			counterreg = a3;
+		} else {
+			counterreg = ARMREG_R9;
+			counterreg_in_use = jit_reg_in_use(op, counterreg, 0);
+			if (counterreg_in_use) arm32_push_reg(jit->ip, counterreg);
+			arm32_mov_reg_reg(jit->ip, counterreg, a3);
+		}
 	}
 
+
+//	if (counterreg_in_use) arm32_push_reg(jit->ip, counterreg);
+
 	jit_value loop = (jit_value) jit->ip;
-	
+	// FIXME: pouzit pre-index + write
+	arm32_alucc_reg_imm(jit->ip, ARMOP_SUB, 1, counterreg, counterreg, 1);
+	arm32_ldub_reg(jit->ip, scrapreg, a2, counterreg);
+	arm32_stb_reg(jit->ip, scrapreg, a1, counterreg);
+	arm32_cmp_reg_imm(jit->ip, counterreg, 0);
+	arm32_branch(jit->ip, ARMCOND_NE, (loop - (jit_value) jit->ip) / 4);
+
+/*	
 	sparc_sub_imm(jit->ip, TRUE, counterreg, 1, counterreg);
 	sparc_ldub(jit->ip, a2, counterreg, scrapreg);
 	sparc_stb(jit->ip, scrapreg, a1, counterreg);
 	sparc_branch(jit->ip, FALSE, sparc_bne, (loop - (jit_value) jit->ip) / 4);
 	sparc_nop(jit->ip);
-}
 */
+	if (counterreg_in_use) arm32_pop_reg(jit->ip, counterreg);
+}
+
 static inline void emit_ureg(struct jit *jit, long vreg, long hreg_id)
 {
 	if (JIT_REG_SPEC(vreg) == JIT_RTYPE_ARG) {
@@ -813,11 +838,9 @@ void jit_gen_op(struct jit * jit, struct jit_op * op)
 			op->patch_addr = JIT_BUFFER_OFFSET(jit);
 			arm32_mov_reg_imm32(jit->ip, a1, 0xdeadbeef);
 			break;
-/*
 		case JIT_MEMCPY:
 			emit_memcpy(jit, op, a1, a2, a3);
 			break;
-*/
 
 		 // platform independent opcodes handled in the jitlib-core.c
 		case JIT_DATA_BYTE: break;
