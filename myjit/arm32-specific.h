@@ -565,38 +565,144 @@ static void emit_sparc_floor(struct jit * jit, long a1, long a2, int floor)
 }
 
 */
-static void emit_memcpy(struct jit *jit, jit_op *op, jit_value a1, jit_value a2, jit_value a3)
+struct transfer_info {
+	int sourcereg;
+	int destreg;
+	int scrapreg;
+	int scrap_in_use;
+	int counterreg;
+	int counter_in_use;
+	int block_size;
+	unsigned char *loop_addr;
+};
+
+static void emit_transfer_init(struct jit * jit, jit_op * op, jit_value destreg, jit_value srcreg, jit_value cnt, int block_size)
 {
-	int scrapreg = ARMREG_R12;
-	int counterreg = -1;
-	int counterreg_in_use = 0;
+	struct transfer_info *tinf = JIT_MALLOC(sizeof(struct transfer_info));	
+	tinf->sourcereg = srcreg;
+	tinf->destreg = destreg;
+	tinf->block_size = block_size;
+
+
+	// XXX: duplicitni kod s common86-specific
+	// FIXME: pokud je jako scrapreg nebo destreg vybran callee-saved register
+	// je to potreba osetrit v prologu
+	jit_hw_reg *scrap = jit_get_unused_reg_with_index(jit->reg_al, op, 0, 0);
+	if (scrap) tinf->scrapreg = scrap->id;
+	else {
+		for (int i = 0; i < jit->reg_al->gp_reg_cnt; i++) {
+			jit_hw_reg *r = &jit->reg_al->gp_regs[i];
+			if ((r->id != srcreg) && (r->id != destreg) && (!IS_IMM(op) && (r->id != cnt))) {
+				tinf->scrapreg = r->id;
+				break;
+			}
+		}
+	}
+	tinf->scrap_in_use = jit_reg_in_use(op, tinf->scrapreg, 0);
 
 	if (IS_IMM(op)) {
-		counterreg = ARMREG_R9;
-		counterreg_in_use = jit_reg_in_use(op, counterreg, 0);
-		if (counterreg_in_use) arm32_push_reg(jit->ip, counterreg);
-		arm32_mov_reg_imm32(jit->ip, counterreg, a3);
+		jit_hw_reg * counter = jit_get_unused_reg_with_index(jit->reg_al, op, 0, 1);
+		if (counter) tinf->counterreg = counter->id;
+		else {
+			for (int i = 0; i < jit->reg_al->gp_reg_cnt; i++) {
+				jit_hw_reg *r = &jit->reg_al->gp_regs[i];
+				if ((r->id != srcreg) && (r->id != destreg) && (r->id != tinf->scrapreg)) {
+					tinf->counterreg = r->id;
+					break;
+				}
+			}
+		}
+		tinf->counter_in_use = jit_reg_in_use(op, tinf->counterreg, 0);
 	} else {
-		if (!jit_set_get(op->live_out, op->arg[2])) {
-			counterreg = a3;
+		if (jit_set_get(op->live_out, op->arg[2])) {
+			jit_hw_reg *counter = jit_get_unused_reg_with_index(jit->reg_al, op, 0, 1);
+			tinf->counterreg = (counter ? counter->id : cnt);
+			tinf->counter_in_use = jit_reg_in_use(op, tinf->counterreg, 0);
 		} else {
-			counterreg = ARMREG_R9;
-			counterreg_in_use = jit_reg_in_use(op, counterreg, 0);
-			if (counterreg_in_use) arm32_push_reg(jit->ip, counterreg);
-			arm32_mov_reg_reg(jit->ip, counterreg, a3);
+			tinf->counterreg = cnt;
+			tinf->counter_in_use = 0;
+		}
+	}
+	/// konci podpobny kod
+
+	if (tinf->counter_in_use) arm32_push_reg(jit->ip, tinf->counterreg);
+	if (tinf->scrap_in_use) arm32_push_reg(jit->ip, tinf->scrapreg);
+
+	if (IS_IMM(op)) arm32_mov_reg_imm32(jit->ip, tinf->counterreg, cnt * block_size);
+	else if ((tinf->counterreg != cnt) || block_size > 1) {
+		switch (block_size) {
+			case 1: arm32_mov_reg_reg(jit->ip, tinf->counterreg, cnt); break;
+			case 2: arm32_lsh_imm(jit->ip, tinf->counterreg, tinf->counterreg, 1); break; 
+			case 4: arm32_lsh_imm(jit->ip, tinf->counterreg, tinf->counterreg, 2); break;
+			default: abort();
 		}
 	}
 
-	jit_value loop = (jit_value) jit->ip;
-	// FIXME: pouzit pre-index + write
-	arm32_alucc_reg_imm(jit->ip, ARMOP_SUB, 1, counterreg, counterreg, 1);
-	arm32_ldub_reg(jit->ip, scrapreg, a2, counterreg);
-	arm32_stb_reg(jit->ip, scrapreg, a1, counterreg);
-	arm32_branch(jit->ip, ARMCOND_NE, (loop - (jit_value) jit->ip) / 4);
+	tinf->loop_addr = jit->ip;
+	op->addendum = tinf;
 
-	if (counterreg_in_use) arm32_pop_reg(jit->ip, counterreg);
+	arm32_alucc_reg_imm(jit->ip, ARMOP_SUB, 1, tinf->counterreg, tinf->counterreg, block_size);
+	switch (block_size) {
+		case 1: arm32_ldsb_reg(jit->ip, tinf->scrapreg, srcreg, tinf->counterreg); break;
+		case 2: arm32_ldsh_reg(jit->ip, tinf->scrapreg, srcreg, tinf->counterreg); break;
+		case 4: arm32_ld_reg(jit->ip, tinf->scrapreg, srcreg, tinf->counterreg); break;
+		default: abort();
+	}
 }
 
+static void emit_transfer_loop(struct jit *jit, jit_op *op)
+{
+	struct transfer_info *tinf = (struct transfer_info *)op->addendum;
+	jit_value loop = (jit_value) tinf->loop_addr;
+
+	switch (tinf->block_size) {
+		case 1: arm32_stb_reg(jit->ip, tinf->scrapreg, tinf->destreg, tinf->counterreg); break;
+		case 2: arm32_sth_reg(jit->ip, tinf->scrapreg, tinf->destreg, tinf->counterreg); break;
+		case 4: arm32_st_reg(jit->ip, tinf->scrapreg, tinf->destreg, tinf->counterreg); break;
+		default: abort();
+	}
+
+	arm32_branch(jit->ip, ARMCOND_NE, (loop - (jit_value) jit->ip) / 4);
+	if (tinf->scrap_in_use) arm32_pop_reg(jit->ip, tinf->scrapreg);
+	if (tinf->counter_in_use) arm32_pop_reg(jit->ip, tinf->counterreg);
+}
+
+static void emit_transfer_op(struct jit *jit, jit_op *op, int alu_op)
+{
+	jit_op *init_op = op->prev;
+	while (GET_OP(init_op) != JIT_TRANSFER)
+		init_op = init_op->prev;
+
+	struct transfer_info *tinf = (struct transfer_info *)init_op->addendum;
+	int valreg = ARMREG_R12;
+
+	if (op->arg[1] == R_OUT) {
+		switch (tinf->block_size) {
+			case 1: arm32_ldsb_reg(jit->ip, ARMREG_R12, tinf->destreg, tinf->counterreg); break;
+			case 2: arm32_ldsh_reg(jit->ip, ARMREG_R12, tinf->destreg, tinf->counterreg); break;
+			case 4: arm32_ld_reg(jit->ip, ARMREG_R12, tinf->destreg, tinf->counterreg); break;
+			default: abort();
+		}
+	} else if (op->r_arg[1] != -1) {
+		if (op->r_arg[1] == tinf->counterreg) {
+			arm32_ld_imm(jit->ip, ARMREG_R12, ARMREG_SP, (tinf->scrap_in_use ? 4 : 0));
+		} else if (op->r_arg[1] == tinf->scrapreg) {
+			arm32_ld_imm(jit->ip, ARMREG_R12, ARMREG_SP, 0);
+		} else valreg = op->r_arg[1];
+	} else {
+		arm32_ld_fp_imm(jit->ip, ARMREG_R12, GET_REG_POS(jit, op->arg[1]));
+	}
+
+	arm32_alu_reg_reg(jit->ip, alu_op, tinf->scrapreg, tinf->scrapreg, valreg);
+
+	if (op->arg[0]) emit_transfer_loop(jit, (jit_op *)op->arg[0]);
+}
+
+static void emit_memcpy(struct jit *jit, jit_op *op, jit_value a1, jit_value a2, jit_value a3)
+{
+	emit_transfer_init(jit, op, a1, a2, a3, 1);
+	emit_transfer_loop(jit, op);
+}
 
 static void emit_memset(struct jit *jit, jit_op *op, jit_value tgt_reg, jit_value count_reg, jit_value val, int block_size)
 {
@@ -860,6 +966,14 @@ void jit_gen_op(struct jit * jit, struct jit_op * op)
 			break;
 		case JIT_MEMCPY: emit_memcpy(jit, op, a1, a2, a3); break;
 		case JIT_MEMSET: emit_memset(jit, op, a1, a2, a3, op->arg_size); break;
+		case JIT_TRANSFER: emit_transfer_init(jit, op, a1, a2, a3, op->arg_size); break;
+		case JIT_TRANSFER_CPY: emit_transfer_loop(jit, (jit_op *)a1); break;
+		case JIT_TRANSFER_XOR: emit_transfer_op(jit, op, ARMOP_EOR); break;
+		case JIT_TRANSFER_AND: emit_transfer_op(jit, op, ARMOP_AND); break;
+		case JIT_TRANSFER_OR:  emit_transfer_op(jit, op, ARMOP_ORR); break;
+		case JIT_TRANSFER_ADD: emit_transfer_op(jit, op, ARMOP_ADD); break;
+		case JIT_TRANSFER_SUB: emit_transfer_op(jit, op, ARMOP_SUB); break;
+
 
 		 // platform independent opcodes handled in the jitlib-core.c
 		case JIT_DATA_BYTE: break;
