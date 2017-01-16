@@ -384,10 +384,10 @@ static inline int arm32_encode_imm(int x)
 	  B(16, 0x8bd) \
 	| B(0,  0x6ffe))
 
-#define arm32_single_data_transfer(ins, load, regs, byte, rd, rn, op2) \
+#define arm32_single_data_transfer(ins, cond, load, regs, byte, rd, rn, op2) \
 	do { \
 		unsigned int op = \
-		  B(28, ARMCOND_AL) \
+		  B(28, cond) \
 		| B(26, 0x1)  \
 		| B(25, regs) \
 		| B(24, 0x1) /* post/pre index*/ \
@@ -413,32 +413,39 @@ static inline int arm32_encode_imm(int x)
 	} while (0) 
 
 #define arm32_ld_reg(ins, rd, rn, rm) \
-	arm32_single_data_transfer(ins, 1, 1, 0, rd, rn, rm)
+	arm32_single_data_transfer(ins, ARMCOND_AL, 1, 1, 0, rd, rn, rm)
 
 #define arm32_ldub_reg(ins, rd, rn, rm) \
-	arm32_single_data_transfer(ins, 1, 1, 1, rd, rn, rm)
+	arm32_single_data_transfer(ins, ARMCOND_AL, 1, 1, 1, rd, rn, rm)
 
 #define arm32_ld_imm(ins, rd, rn, imm) \
-	arm32_single_data_transfer(ins, 1, 0, 0, rd, rn, imm)
+	arm32_single_data_transfer(ins, ARMCOND_AL, 1, 0, 0, rd, rn, imm)
 
 #define arm32_ldub_imm(ins, rd, rn, imm) \
-	arm32_single_data_transfer(ins, 1, 0, 1, rd, rn, imm)
+	arm32_single_data_transfer(ins, ARMCOND_AL, 1, 0, 1, rd, rn, imm)
 
-#define arm32_st_reg(ins, rd, rn, rm) \
-	arm32_single_data_transfer(ins, 0, 1, 0, rd, rn, rm)
+#define arm32_cond_st_reg(ins, cond, rd, rn, rm) \
+	arm32_single_data_transfer(ins, cond, 0, 1, 0, rd, rn, rm)
 
-#define arm32_stb_reg(ins, rd, rn, rm) \
-	arm32_single_data_transfer(ins, 0, 1, 1, rd, rn, rm)
+#define arm32_cond_stb_reg(ins, cond, rd, rn, rm) \
+	arm32_single_data_transfer(ins, cond, 0, 1, 1, rd, rn, rm)
 
-#define arm32_st_imm(ins, rd, rn, imm) \
-	arm32_single_data_transfer(ins, 0, 0, 0, rd, rn, imm)
+#define arm32_cond_st_imm(ins, cond, rd, rn, imm) \
+	arm32_single_data_transfer(ins, cond, 0, 0, 0, rd, rn, imm)
 
-#define arm32_stb_imm(ins, rd, rn, imm) \
-	arm32_single_data_transfer(ins, 0, 0, 1, rd, rn, imm)
+#define arm32_cond_stb_imm(ins, cond, rd, rn, imm) \
+	arm32_single_data_transfer(ins, cond, 0, 0, 1, rd, rn, imm)
 
-#define arm32_signed_and_half_data_transfer_reg(ins, load, signed_value, halfword, rd, rn, rm) \
-arm32_emit_al(ins, \
-	  B(24, 0x1) \
+#define arm32_st_reg(ins, rd, rn, rm)   arm32_cond_st_reg(ins, ARMCOND_AL, rd, rn, rm)
+#define arm32_stb_reg(ins, rd, rn, rm)  arm32_cond_stb_reg(ins, ARMCOND_AL, rd, rn, rm)
+#define arm32_st_imm(ins, rd, rn, imm)  arm32_cond_st_imm(ins, ARMCOND_AL, rd, rn, imm)
+#define arm32_stb_imm(ins, rd, rn, imm) arm32_cond_stb_imm(ins, ARMCOND_AL, rd, rn, imm)
+
+
+#define arm32_signed_and_half_data_transfer_reg(ins, cond, load, signed_value, halfword, rd, rn, rm) \
+arm32_emit(ins, \
+	  B(28, cond) \
+	| B(24, 0x1) \
 	| B(23, 0x1) /* UP => rn + rm */ \
 	| B(22, 0) \
 	| B(21, 0) /* write */ \
@@ -451,12 +458,13 @@ arm32_emit_al(ins, \
 	| B(4,  0x1) \
 	| B(0,  rm)) \
 
-#define arm32_signed_and_half_data_transfer_imm(ins, load, signed_value, halfword, rd, rn, imm) \
+#define arm32_signed_and_half_data_transfer_imm(ins, cond, load, signed_value, halfword, rd, rn, imm) \
 	do { \
 		int __val = imm; \
 		int __absval = (__val < 0 ? -__val : __val); \
 		arm32_emit_al(ins,\
-			  B(24, 0x1) \
+			  B(28, cond) \
+			| B(24, 0x1) \
 			| B(23, __val >= 0) /* UP => rn + rm */ \
 			| B(22, 0x1) \
 			| B(21, 0x0) /* write */ \
@@ -472,28 +480,32 @@ arm32_emit_al(ins, \
 	} while (0)
 
 #define arm32_ldsb_reg(ins, rd, rn, rm) \
-	arm32_signed_and_half_data_transfer_reg(ins, 1, 1, 0, rd, rn, rm)
+	arm32_signed_and_half_data_transfer_reg(ins, ARMCOND_AL, 1, 1, 0, rd, rn, rm)
 
 #define arm32_ldsh_reg(ins, rd, rn, rm) \
-	arm32_signed_and_half_data_transfer_reg(ins, 1, 1, 1, rd, rn, rm)
+	arm32_signed_and_half_data_transfer_reg(ins, ARMCOND_AL, 1, 1, 1, rd, rn, rm)
 
 #define arm32_lduh_reg(ins, rd, rn, rm) \
-	arm32_signed_and_half_data_transfer_reg(ins, 1, 0, 1, rd, rn, rm)
+	arm32_signed_and_half_data_transfer_reg(ins, ARMCOND_AL, 1, 0, 1, rd, rn, rm)
 
 #define arm32_ldsb_imm(ins, rd, rn, imm) \
-	arm32_signed_and_half_data_transfer_imm(ins, 1, 1, 0, rd, rn, imm)
+	arm32_signed_and_half_data_transfer_imm(ins, ARMCOND_AL, 1, 1, 0, rd, rn, imm)
 
 #define arm32_ldsh_imm(ins, rd, rn, imm) \
-	arm32_signed_and_half_data_transfer_imm(ins, 1, 1, 1, rd, rn, imm)
+	arm32_signed_and_half_data_transfer_imm(ins, ARMCOND_AL, 1, 1, 1, rd, rn, imm)
 
 #define arm32_lduh_imm(ins, rd, rn, imm) \
-	arm32_signed_and_half_data_transfer_imm(ins, 1, 0, 1, rd, rn, imm)
+	arm32_signed_and_half_data_transfer_imm(ins, ARMCOND_AL, 1, 0, 1, rd, rn, imm)
 
-#define arm32_sth_reg(ins, rd, rn, rm) \
-	arm32_signed_and_half_data_transfer_reg(ins, 0, 0, 1, rd, rn, rm)
+#define arm32_cond_sth_reg(ins, cond, rd, rn, rm) \
+	arm32_signed_and_half_data_transfer_reg(ins, cond, 0, 0, 1, rd, rn, rm)
 
-#define arm32_sth_imm(ins, rd, rn, imm) \
-	arm32_signed_and_half_data_transfer_imm(ins, 0, 0, 1, rd, rn, imm)
+#define arm32_cond_sth_imm(ins, cond, rd, rn, imm) \
+	arm32_signed_and_half_data_transfer_imm(ins, cond, 0, 0, 1, rd, rn, imm)
+
+#define arm32_sth_reg(ins, rd, rn, rm) arm32_cond_sth_reg(ins, ARMCOND_AL, rd, rn, rm)
+#define arm32_sth_imm(ins, rd, rn, imm) arm32_cond_sth_imm(ins, ARMCOND_AL, rd, rn, imm)
+
 
 #define arm32_shift_reg(ins, type, rd, rn, rs) arm32_emit_al(ins, \
 	  B(21, 0xd) \

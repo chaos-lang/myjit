@@ -4,8 +4,8 @@
 DEFINE_TEST(test10)
 {
 	plfv f1;
-	static char x[] = { -2, -3, -4, -5, -6, -7, -8, -9, -10 };
-	static char y[] = { 10, 20, 30, 40, 50, 60, 70, 80, 90, 100 };
+	static signed char x[] = { -2, -3, -4, -5, -6, -7, -8, -9, -10 };
+	static signed char y[] = { 10, 20, 30, 40, 50, 60, 70, 80, 90, 100 };
 
 	jit_prolog(p, &f1);
 	jit_movi(p, R(0), x + 2);
@@ -34,8 +34,8 @@ DEFINE_TEST(test10)
 DEFINE_TEST(test11)
 {
 	plfv f1;
-	static char x[] = { -2, -3, -4, -5, -6, -7, -8, -9, -10 };
-	static char y[] = { 10, 20, 30, 40, 50, 60, 70, 80, 90, 100 };
+	static signed char x[] = { -2, -3, -4, -5, -6, -7, -8, -9, -10 };
+	static signed char y[] = { 10, 20, 30, 40, 50, 60, 70, 80, 90, 100 };
 
 	jit_prolog(p, &f1);
 	jit_movi(p, R(0), x + 2);
@@ -65,8 +65,8 @@ DEFINE_TEST(test11)
 DEFINE_TEST(test12)
 {
 	plfv f1;
-	static char x[] = { -2, -3, -4, -5, -6, -7, -8, -9, -10 };
-	static char y[] = { 10, 20, 30, 40, 50, 60, 70, 80, 90, 100 };
+	static signed char x[] = { -2, -3, -4, -5, -6, -7, -8, -9, -10 };
+	static signed char y[] = { 10, 20, 30, 40, 50, 60, 70, 80, 90, 100 };
 
 	jit_prolog(p, &f1);
 	jit_movi(p, R(0), x + 2);
@@ -96,7 +96,7 @@ DEFINE_TEST(test12)
 DEFINE_TEST(test13)
 {
 	plfv f1;
-	static char x[] = { -2, -3, -4, -5, -6, -7, -8, -9, -10 };
+	static signed char x[] = { -2, -3, -4, -5, -6, -7, -8, -9, -10 };
 
 	jit_prolog(p, &f1);
 	jit_movi(p, R(0), x + 2);
@@ -184,6 +184,35 @@ DEFINE_TEST(test15)
 	return 0;
 }
 
+DEFINE_TEST(test16)
+{
+	plfv f1;
+	static short x[] = { -2, -3, -4, -5, -6, -7, -8, -9, -10 };
+
+	jit_prolog(p, &f1);
+	jit_movi(p, R(0), x + 2);
+	jit_movi(p, R(1), 5);
+
+	jit_memseti(p, R(0), R(1), 42, sizeof(short));
+
+	jit_reti(p, 0);
+	JIT_GENERATE_CODE(p);
+
+	ASSERT_EQ(0, f1());
+
+	ASSERT_EQ(-2, x[0]);
+	ASSERT_EQ(-3, x[1]);
+	ASSERT_EQ(42, x[2]);
+	ASSERT_EQ(42, x[3]);
+	ASSERT_EQ(42, x[4]);
+	ASSERT_EQ(42, x[5]);
+	ASSERT_EQ(42, x[6]);
+	ASSERT_EQ(-9, x[7]);
+	ASSERT_EQ(-10, x[8]);
+
+	return 0;
+}
+
 
 DEFINE_TEST(test20)
 {
@@ -191,8 +220,8 @@ DEFINE_TEST(test20)
 	IGNORE_TEST
 #endif
 	plfv f1;
-	static char x[] = { -2, -3, -4, -5, -6, -7, -8, -9, -10 };
-	static char y[] = { 10, 20, 30, 40, 50, 60, 70, 80, 90, 100 };
+	static signed char x[] = { -2, -3, -4, -5, -6, -7, -8, -9, -10 };
+	static signed char y[] = { 10, 20, 30, 40, 50, 60, 70, 80, 90, 100 };
 
 	jit_prolog(p, &f1);
 	jit_movi(p, R(0), x + 2);
@@ -459,6 +488,7 @@ void test_setup()
 	SETUP_TEST(test13);
 	SETUP_TEST(test14);
 	SETUP_TEST(test15);
+	SETUP_TEST(test16);
 
 	SETUP_TEST(test20);
 	SETUP_TEST(test21);

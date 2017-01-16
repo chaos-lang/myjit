@@ -597,6 +597,38 @@ static void emit_memcpy(struct jit *jit, jit_op *op, jit_value a1, jit_value a2,
 	if (counterreg_in_use) arm32_pop_reg(jit->ip, counterreg);
 }
 
+
+static void emit_memset(struct jit *jit, jit_op *op, jit_value tgt_reg, jit_value count_reg, jit_value val, int block_size)
+{
+	int counter_reg = ARMREG_R12;
+	int value_reg = val;
+	int value_reg_in_use = 0;
+
+	if (IS_IMM(op)) {
+		value_reg = ARMREG_R9;
+		value_reg_in_use = jit_reg_in_use(op, value_reg, 0);
+		if (value_reg_in_use) arm32_push_reg(jit->ip, value_reg);
+		arm32_mov_reg_imm32(jit->ip, value_reg, val);
+	}
+	switch (block_size) {
+		case 1: arm32_mov_reg_reg(jit->ip, counter_reg, count_reg); break;
+		case 2: arm32_lsh_imm(jit->ip, counter_reg, count_reg, 1); break; 
+		case 4: arm32_lsh_imm(jit->ip, counter_reg, count_reg, 2); break;
+		default: abort();
+	}
+
+	arm32_alucc_reg_imm(jit->ip, ARMOP_SUB, 1, counter_reg, counter_reg, block_size);
+	switch (block_size) {
+		case 1: arm32_cond_stb_reg(jit->ip, ARMCOND_CS, value_reg, tgt_reg, counter_reg); break;
+		case 2: arm32_cond_sth_reg(jit->ip, ARMCOND_CS, value_reg, tgt_reg, counter_reg); break; // FIXME
+		case 4: arm32_cond_st_reg(jit->ip, ARMCOND_CS, value_reg, tgt_reg, counter_reg); break;
+		default: abort();
+	}
+	arm32_branch(jit->ip, ARMCOND_CS, -2);
+
+	if (value_reg_in_use) arm32_pop_reg(jit->ip, value_reg);
+}
+
 static inline void emit_ureg(struct jit *jit, long vreg, long hreg_id)
 {
 	if (JIT_REG_SPEC(vreg) == JIT_RTYPE_ARG) {
@@ -826,9 +858,8 @@ void jit_gen_op(struct jit * jit, struct jit_op * op)
 			op->patch_addr = JIT_BUFFER_OFFSET(jit);
 			arm32_mov_reg_imm32(jit->ip, a1, 0xdeadbeef);
 			break;
-		case JIT_MEMCPY:
-			emit_memcpy(jit, op, a1, a2, a3);
-			break;
+		case JIT_MEMCPY: emit_memcpy(jit, op, a1, a2, a3); break;
+		case JIT_MEMSET: emit_memset(jit, op, a1, a2, a3, op->arg_size); break;
 
 		 // platform independent opcodes handled in the jitlib-core.c
 		case JIT_DATA_BYTE: break;
