@@ -705,6 +705,8 @@ static char *platform_id()
 	return "amd64";
 #elif defined(JIT_ARCH_I386)
 	return "i386";
+#elif defined(JIT_ARCH_ARM32)
+	return "arm32";
 #else
 	return "sparc";
 #endif
