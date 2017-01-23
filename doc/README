@@ -127,9 +127,9 @@ These operations have two operands, both of which have to be registers.
 
 ::
 
-	negr  reg      O1 := -O2
-	notr  reg      O1 := ~O2
-	fnegr freg     O1 := -O2
+	negr  reg, reg       O1 := -O2
+	notr  reg, reg       O1 := ~O2
+	fnegr freg, freg     O1 := -O2
 
 Load Operations
 ...............
