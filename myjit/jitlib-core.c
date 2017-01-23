@@ -168,7 +168,7 @@ static int jit_imm_overflow(struct jit *jit, jit_op *op, long value)
 	if ((op->code == (JIT_STX | IMM)) && (op->arg_size == 4) && (arm32_imm_rotate(-value) >= 0)) return 0;
 
 	if (GET_OP(op) == JIT_MOD) return 1;
-	if ((GET_OP(op) == JIT_DIV) || (GET_OP(op) == JIT_MOD)) {
+	if ((GET_OP(op) == JIT_DIV) || (GET_OP(op) == JIT_MOD) || (GET_OP(op) == JIT_MUL)) {
 		if (IS_IMM(op)) {
 			return !((value == 1) || (value == 2) || (value == 4) || (value == 8) || (value == 16) || (value == 32));
 		} else return 0;

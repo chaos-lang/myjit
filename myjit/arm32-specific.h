@@ -397,81 +397,22 @@ void jit_patch_local_addrs(struct jit *jit)
 	}
 }
 
-/**
- * computes number of 1's in the given binary number
- * this was taken from the Hacker's Delight book by Henry S. Warren
- */
-static inline int _bit_pop(unsigned int x) {
-	x = (x & 0x55555555) + ((x >> 1) & 0x55555555);
-	x = (x & 0x33333333) + ((x >> 2) & 0x33333333);
-	x = (x & 0x0F0F0F0F) + ((x >> 4) & 0x0F0F0F0F);
-	x = (x & 0x00FF00FF) + ((x >> 8) & 0x00FF00FF);
-	x = (x & 0x0000FFFF) + ((x >>16) & 0x0000FFFF);
-	return x;
-}
-
-/**
- * Generates multiplication using only the shift left and add operations
- */
-/*
-void emit_optimized_multiplication(struct jit * jit, long a1, long a2, long a3)
-{
-	int bits = _bit_pop(a3);
-	unsigned long ar = (unsigned long)a3;
-	int in_tmp = 0; // 1 if there's something in the temporary registers g1, g2
-	for (int i = 0; i < 32; i++) {
-		if (ar & 0x1) {
-			bits--;
-			if (bits == 0) {
-				// last and the only one bit to multiply with
-				if (!in_tmp) sparc_sll_imm(jit->ip, a2, i, a1);
-				else {
-					sparc_sll_imm(jit->ip, a2, i, sparc_g2);
-					sparc_add(jit->ip, FALSE, sparc_g1, sparc_g2, a1);
-				}
-			} else  {
-				if (!in_tmp) {
-					sparc_sll_imm(jit->ip, a2, i, sparc_g1);
-					in_tmp = 1;
-				} else {
-					sparc_sll_imm(jit->ip, a2, i, sparc_g2);
-					sparc_add(jit->ip, FALSE, sparc_g1, sparc_g2, sparc_g1);
-				}
-			}
-		}
-		ar >>= 1;
-		if (bits == 0) break;
-	}
-}
-*/
-
 void emit_mul(struct jit * jit, jit_op * op)
 {
 	long a1 = op->r_arg[0];
 	long a2 = op->r_arg[1];
 	long a3 = op->r_arg[2];
 	if (IS_IMM(op)) {
-		if (a3 == 0) {
-			arm32_mov_reg_imm32(jit->ip, a1, 0);
-			return;
+		switch (a3) {
+			case 0: arm32_mov_reg_imm32(jit->ip, a1, 0); return;
+			case 1: if (a1 != a2) arm32_mov_reg_reg(jit->ip, a1, a2); return; 
+			case 2:  arm32_rsh_imm(jit->ip, a1, a2, 1); return;
+			case 4:  arm32_rsh_imm(jit->ip, a1, a2, 2); return;
+			case 8:  arm32_rsh_imm(jit->ip, a1, a2, 3); return;
+			case 16: arm32_rsh_imm(jit->ip, a1, a2, 4); return;
+			case 32: arm32_rsh_imm(jit->ip, a1, a2, 5); return;
+			default: abort(); // other values on permitted
 		}
-		if (a3 == 1) {
-			if (a1 != a2) arm32_mov_reg_reg(jit->ip, a1, a2);
-			return;
-		}
-/* XXX: TODO
-		if ((a3 > 0) && (_bit_pop(a3) <= 5)) {
-			emit_optimized_multiplication(jit, a1, a2, a3);
-			return;
-		}
-		if ((a3 < 0) && (_bit_pop(-a3) <= 5)) {
-			emit_optimized_multiplication(jit, a1, a2, -a3);
-			sparc_neg(jit->ip, a1);
-			return;
-		}
-*/
-		// other immediate values not permitted
-		abort();
 	} else {
 		arm32_mul(jit->ip, a1, a2, a3);
 	}
