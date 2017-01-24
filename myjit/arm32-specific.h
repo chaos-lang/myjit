@@ -1057,12 +1057,12 @@ op_complete:
 			sparc_stdf_imm(jit->ip, sparc_f30, sparc_fp, -8);
 			sparc_ld_imm(jit->ip, sparc_fp, -8, a1);
 			break;
+*/
 		case (JIT_EXT | REG):
-			sparc_st_imm(jit->ip, a2, sparc_fp, -8); 
-			sparc_ldf_imm(jit->ip, sparc_fp, -8, sparc_f30);
-			sparc_fitod(jit->ip, sparc_f30, a1);
+			arm32_vmov_reg_vreg_float(jit->ip, a1, a2);
+			arm32_vcvt_sint_double(jit->ip, a2, a2);
 			break;
-
+/*
 		case (JIT_FLOOR | REG): emit_sparc_floor(jit, a1, a2, 1); break;
 		case (JIT_CEIL | REG): emit_sparc_floor(jit, a1, a2, 0); break;
 		case (JIT_ROUND | REG): emit_sparc_round(jit, a1, a2); break;
