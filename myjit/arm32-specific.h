@@ -865,7 +865,7 @@ void jit_gen_op(struct jit * jit, struct jit_op * op)
 				arm32_add_sp_imm(jit->ip, frame_size(jit, info));
 				if (!IS_IMM(op) && (a1 != ARMREG_R0)) arm32_mov_reg_reg(jit->ip, ARMREG_R0, a1);
 				if (IS_IMM(op)) arm32_mov_reg_imm32(jit->ip, ARMREG_R0, a1);
-				arm32_popall_but_r0(jit->ip);
+				arm32_popall_but_r0123(jit->ip);
 				arm32_bx(jit->ip, ARMCOND_AL, ARMREG_LR);
 			} while (0);
 			break;
@@ -934,7 +934,7 @@ op_complete:
 				jit->current_func = op;
 				struct jit_func_info * info = jit_current_func_info(jit);
 				op->patch_addr = JIT_BUFFER_OFFSET(jit);
-				arm32_pushall_but_r0(jit->ip);
+				arm32_pushall_but_r0123(jit->ip);
 				arm32_mov_reg_reg(jit->ip, ARMREG_FP, ARMREG_SP);
 				arm32_sub_sp_imm(jit->ip, frame_size(jit, info));
 			} while (0);
@@ -1021,21 +1021,24 @@ op_complete:
 				default: abort();
 			} break;
 
-/*
 		//
 		// Floating-point operations;
 		//
+/*
 		case (JIT_FMOV | REG):
 			sparc_fmovs(jit->ip, a2, a1);
 			sparc_fmovs(jit->ip, a2 + 1, a1 + 1);
 			break;
+*/
 		case (JIT_FMOV | IMM):
-			sparc_set32(jit->ip, (long)&op->flt_imm, sparc_g1);
-			sparc_lddf(jit->ip, sparc_g1, sparc_g0, a1);
+			arm32_mov_reg_imm32(jit->ip, ARMREG_R12, (long)&op->flt_imm);
+			arm32_vldr_size(jit->ip, a1, ARMREG_R12, 0, sizeof(double));
 			break;
-		case (JIT_FADD | REG): sparc_faddd(jit->ip, a2, a3, a1); break;
-		case (JIT_FSUB | REG): sparc_fsubd(jit->ip, a2, a3, a1); break;
-		case (JIT_FRSB | REG): sparc_fsubd(jit->ip, a3, a2, a1); break;
+
+		case (JIT_FADD | REG): arm32_vadd_double(jit->ip, a1, a2, a3); break;
+		case (JIT_FSUB | REG): arm32_vsub_double(jit->ip, a1, a2, a3); break;
+		case (JIT_FRSB | REG): arm32_vsub_double(jit->ip, a1, a3, a2); break;
+/*
 		case (JIT_FMUL | REG): sparc_fmuld(jit->ip, a2, a3, a1); break;
 		case (JIT_FDIV | REG): sparc_fdivd(jit->ip, a2, a3, a1); break;
 		case (JIT_FNEG | REG): sparc_fnegs(jit->ip, a2, a1); break;
@@ -1060,18 +1063,23 @@ op_complete:
 		case (JIT_FLOOR | REG): emit_sparc_floor(jit, a1, a2, 1); break;
 		case (JIT_CEIL | REG): emit_sparc_floor(jit, a1, a2, 0); break;
 		case (JIT_ROUND | REG): emit_sparc_round(jit, a1, a2); break;
-
+*/
 		case (JIT_FRET | REG):
-			if (op->arg_size == sizeof(float)) {
-				sparc_fdtos(jit->ip, a1, sparc_f0);
-			} else {
-				sparc_fmovs(jit->ip, a1, sparc_f0);
-				sparc_fmovs(jit->ip, a1 + 1, sparc_f1);
-			}
-			sparc_ret(jit->ip);
-			sparc_restore_imm(jit->ip, sparc_g0, 0, sparc_g0);
+			do {
+				struct jit_func_info *info = jit_current_func_info(jit);
+				arm32_add_sp_imm(jit->ip, frame_size(jit, info));
+				if (op->arg_size == sizeof(float)) {
+// FIXME: konvence
+//					arm32_vmov_vreg_reg_float(jit->ip, ARMREG_R0, a1);
+				} else {
+					arm32_vmov_vreg_vreg_double(jit->ip, ARMREG_D0, a1);
+			///		arm32_vmov_vreg_reg_double(jit->ip, ARMREG_R0, ARMREG_R1, a1);
+				}
+				arm32_popall_but_r0123(jit->ip);
+				arm32_bx(jit->ip, ARMCOND_AL, ARMREG_LR);
+			} while (0);
 			break;
-
+/*
 		case (JIT_FRETVAL):
 			// reg. allocator takes care of proper assignment of the register
 			if (op->arg_size == sizeof(float)) sparc_fstod(jit->ip, sparc_f0, sparc_f0);
@@ -1181,20 +1189,18 @@ struct jit_reg_allocator * jit_reg_allocator_create()
 #endif
 
 
-	a->fp_reg_cnt = 0;
+	a->fp_reg_cnt = 4;
 
 	a->fp_regs = JIT_MALLOC(sizeof(jit_hw_reg) * a->fp_reg_cnt);
-/*
-	i = 0;
-	a->fp_regs[i++] = (jit_hw_reg) { sparc_f0, "f0", 0, 1, 1 };
-	a->fp_regs[i++] = (jit_hw_reg) { sparc_f2, "f2", 0, 1, 2 };
-	a->fp_regs[i++] = (jit_hw_reg) { sparc_f4, "f4", 0, 1, 3 };
-	a->fp_regs[i++] = (jit_hw_reg) { sparc_f6, "f6", 0, 1, 4 };
 
-	jit_hw_reg * reg_i7 = malloc(sizeof(jit_hw_reg));
-	
-	*reg_i7 = (jit_hw_reg) { sparc_i7, "iX", 1, 0, 0 };
-*/
+
+	a->fp_regs[0] = (jit_hw_reg) { ARMREG_D0, "D0", 0, 1, 1 };
+	a->fp_regs[1] = (jit_hw_reg) { ARMREG_D1, "D1", 0, 1, 2 };
+	a->fp_regs[2] = (jit_hw_reg) { ARMREG_D2, "D2", 0, 1, 3 };
+	a->fp_regs[3] = (jit_hw_reg) { ARMREG_D3, "D3", 0, 1, 4 };
+	// FIXME: more registers
+
+
 	a->fp_reg = ARMREG_SP;
 	a->ret_reg = &(a->gp_regs[0]);
 	a->fpret_reg = NULL;

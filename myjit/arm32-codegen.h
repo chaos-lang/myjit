@@ -98,6 +98,26 @@ typedef enum {
 } ARMReg;
 
 typedef enum {
+	ARMREG_D0 = 0,
+	ARMREG_D1,
+	ARMREG_D2,
+	ARMREG_D3,
+	ARMREG_D4,
+	ARMREG_D5,
+	ARMREG_D6,
+	ARMREG_D7,
+	ARMREG_D8,
+	ARMREG_D9,
+	ARMREG_D10,
+	ARMREG_D11,
+	ARMREG_D12,
+	ARMREG_D13,
+	ARMREG_D14,
+	ARMREG_D15
+} ARMVreg;
+
+
+typedef enum {
 	ARMCOND_EQ = 0x0,          /* Equal; Z = 1 */
 	ARMCOND_NE = 0x1,          /* Not equal, or unordered; Z = 0 */
 	ARMCOND_CS = 0x2,          /* Carry set; C = 1 */
@@ -376,6 +396,11 @@ static inline int arm32_encode_imm(int x)
 	  B(16, 0x92d) \
 	| B(0,  0x6ffe)) 
 
+#define arm32_pushall_but_r0123(ins) arm32_emit_al(ins, \
+	  B(16, 0x92d) \
+	| B(0,  0x6ff0)) 
+
+
 #define arm32_popall(ins) arm32_emit_al(ins, \
 	  B(16, 0x8bd) \
 	| B(0,  0x4fff))
@@ -383,6 +408,11 @@ static inline int arm32_encode_imm(int x)
 #define arm32_popall_but_r0(ins) arm32_emit_al(ins, \
 	  B(16, 0x8bd) \
 	| B(0,  0x6ffe))
+
+#define arm32_popall_but_r0123(ins) arm32_emit_al(ins, \
+	  B(16, 0x8bd) \
+	| B(0,  0x6ff0))
+
 
 #define arm32_single_data_transfer(ins, cond, load, regs, byte, rd, rn, op2) \
 	do { \
@@ -590,3 +620,68 @@ arm32_emit(ins, \
 
 #define arm32_and_reg_imm(ins, rd, rn, rm) \
 	arm32_alu_reg_imm(jit->ip, ARMOP_AND, rd, rn, rm)
+
+//
+//
+// VFP instructions
+//
+//
+
+#define arm32_vfp_data_transfer(ins, cond, load, flt, vd, rn, imm) \
+	do { \
+		int __val = imm; \
+		int __absval = (__val < 0 ? -__val : __val); \
+		arm32_emit_al(ins,\
+			  B(28, cond) \
+			| B(24, 0xd) \
+			| B(23, __val >= 0) /* UP => rn + rm */ \
+			| B(22, 0) /* double */ \
+			| B(20, load) \
+			| B(16, rn) \
+			| B(12, vd) \
+			| B(8,  0xb) \
+			| B(0,  __absval & 0xff)); \
+	} while (0)
+
+#define arm32_vldr_size(ins, vd, rn, imm, size) \
+	arm32_vfp_data_transfer(ins, ARMCOND_AL, 1, (size) == sizeof(float), vd, rn, imm)
+
+#define arm32_vmov_vreg_vreg_double(ins, vd, vn) arm32_emit_al(ins, \
+	  B(16, 0xeb0) \
+	| B(12, vd) \
+	| B(4,  0xb4) \
+	| B(0,  vn))
+
+#define arm32_vmov_vreg_reg_float(ins, rd, vn) arm32_emit_al(ins, \
+	  B(20, 0xe1) \
+	| B(16, vn) \
+	| B(12, rd) \
+	| B(4,  0xa1))
+
+#define arm32_vmov_vreg_reg_double(ins, rd1, rd2, vn) arm32_emit_al(ins, \
+	  B(20, 0xc5) \
+	| B(16, rd2) \
+	| B(12, rd1) \
+	| B(4,  0xa1) \
+	| B(0, vn))
+
+#define arm32_vadd_double(ins, vd, vn, vm) arm32_emit_al(ins, \
+	  B(22, 0x38) \
+	| B(20, 0x3) \
+	| B(16, vn) \
+	| B(12, vd) \
+	| B(9,  0x5) \
+	| B(8, 1) /* double */ \
+	| B(0, vm))
+
+#define arm32_vsub_double(ins, vd, vn, vm) arm32_emit_al(ins, \
+	  B(22, 0x38) \
+	| B(20, 0x3) \
+	| B(16, vn) \
+	| B(12, vd) \
+	| B(9,  0x5) \
+	| B(8,  1) /* double */ \
+	| B(4,  0x4) \
+	| B(0,  vm))
+
+
