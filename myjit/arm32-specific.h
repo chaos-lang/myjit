@@ -96,7 +96,7 @@ void jit_init_arg_params(struct jit *jit, struct jit_func_info *info, int p, int
 			a->spill_pos = GET_ARG_SPILL_POS(jit, info, p);
 		} else {
 //			int stack_pos = (pos - jit->reg_al->gp_arg_reg_cnt) + MAX(0, (a->fp_pos - jit->reg_al->fp_arg_reg_cnt));
-			a->location.stack_pos = (13 + (pos - jit->reg_al->gp_arg_reg_cnt))  * 4;
+			a->location.stack_pos = (10 + (pos - jit->reg_al->gp_arg_reg_cnt)) * 4;
 			a->spill_pos = a->location.stack_pos;
 			a->passed_by_reg = 0;
 		}
@@ -183,15 +183,20 @@ static inline void emit_op_and_overflow_branch(struct jit * jit, struct jit_op *
 	if (!negation) arm32_branch (jit->ip, ARMCOND_VS, JIT_GET_ADDR(jit, a1));
 	else arm32_branch (jit->ip, ARMCOND_VC, JIT_GET_ADDR(jit, a1));
 }
-/*
+
 static inline void emit_fpbranch_op(struct jit * jit, struct jit_op * op, int cond, int arg1, int arg2)
 {
-	sparc_fcmpd(jit->ip, arg1, arg2);
+	if (IS_IMM(op)) {
+		arm32_vcmp0_double(jit->ip, op->r_arg[1]);
+	} else {
+		arm32_vcmp_double(jit->ip, op->r_arg[1], op->r_arg[2]);
+	}
+	arm32_vmrs(jit->ip);
+
 	op->patch_addr = JIT_BUFFER_OFFSET(jit);
-	sparc_fbranch (jit->ip, FALSE, cond, JIT_GET_ADDR(jit, op->r_arg[0]));
-	sparc_nop(jit->ip);
+	arm32_branch (jit->ip, cond, JIT_GET_ADDR(jit, op->r_arg[0]));
 }
-*/
+
 /* determines whether the argument value was spilled out or not,
  * if the register is associated with the hardware register
  * it is returned through the reg argument
@@ -832,6 +837,13 @@ void jit_gen_op(struct jit * jit, struct jit_op * op)
 		case JIT_BNOADD: emit_op_and_overflow_branch(jit, op, JIT_ADD, IS_IMM(op), 1); break;
 		case JIT_BNOSUB: emit_op_and_overflow_branch(jit, op, JIT_SUB, IS_IMM(op), 1); break;
 
+		case JIT_FBLT: emit_fpbranch_op(jit, op, ARMCOND_LT, a2, a3); break;
+		case JIT_FBGT: emit_fpbranch_op(jit, op, ARMCOND_GT, a2, a3); break;
+		case JIT_FBLE: emit_fpbranch_op(jit, op, ARMCOND_LE, a2, a3); break;
+		case JIT_FBGE: emit_fpbranch_op(jit, op, ARMCOND_GE, a2, a3); break;
+		case JIT_FBEQ: emit_fpbranch_op(jit, op, ARMCOND_EQ, a2, a3); break;
+		case JIT_FBNE: emit_fpbranch_op(jit, op, ARMCOND_NE, a2, a3); break;
+
 		case JIT_CALL: emit_funcall(jit, op, IS_IMM(op)); break;
 
 		case JIT_PATCH: do {
@@ -1024,12 +1036,10 @@ op_complete:
 		//
 		// Floating-point operations;
 		//
-/*
 		case (JIT_FMOV | REG):
-			sparc_fmovs(jit->ip, a2, a1);
-			sparc_fmovs(jit->ip, a2 + 1, a1 + 1);
+			arm32_vmov_vreg_vreg_double(jit->ip, a1, a2);
 			break;
-*/
+
 		case (JIT_FMOV | IMM):
 			arm32_mov_reg_imm32(jit->ip, ARMREG_R12, (long)&op->flt_imm);
 			arm32_vldr_size(jit->ip, a1, ARMREG_R12, 0, sizeof(double));
@@ -1038,17 +1048,10 @@ op_complete:
 		case (JIT_FADD | REG): arm32_vadd_double(jit->ip, a1, a2, a3); break;
 		case (JIT_FSUB | REG): arm32_vsub_double(jit->ip, a1, a2, a3); break;
 		case (JIT_FRSB | REG): arm32_vsub_double(jit->ip, a1, a3, a2); break;
+		case (JIT_FMUL | REG): arm32_vmul_double(jit->ip, a1, a2, a3); break;
+		case (JIT_FDIV | REG): arm32_vdiv_double(jit->ip, a1, a2, a3); break;
+		case (JIT_FNEG | REG): arm32_vneg_double(jit->ip, a1, a2); break;
 /*
-		case (JIT_FMUL | REG): sparc_fmuld(jit->ip, a2, a3, a1); break;
-		case (JIT_FDIV | REG): sparc_fdivd(jit->ip, a2, a3, a1); break;
-		case (JIT_FNEG | REG): sparc_fnegs(jit->ip, a2, a1); break;
-
-		case (JIT_FBLT | REG): emit_fpbranch_op(jit, op, sparc_fbl, a2, a3); break;
-		case (JIT_FBGT | REG): emit_fpbranch_op(jit, op, sparc_fbg, a2, a3); break;
-		case (JIT_FBLE | REG): emit_fpbranch_op(jit, op, sparc_fble, a2, a3); break;
-		case (JIT_FBGE | REG): emit_fpbranch_op(jit, op, sparc_fbge, a2, a3); break;
-		case (JIT_FBEQ | REG): emit_fpbranch_op(jit, op, sparc_fbe, a2, a3); break;
-		case (JIT_FBNE | REG): emit_fpbranch_op(jit, op, sparc_fbne, a2, a3); break;
 		case (JIT_TRUNC | REG): 
 			sparc_fdtoi(jit->ip, a2, sparc_f30);
 			sparc_stdf_imm(jit->ip, sparc_f30, sparc_fp, -8);
@@ -1069,11 +1072,11 @@ op_complete:
 				struct jit_func_info *info = jit_current_func_info(jit);
 				arm32_add_sp_imm(jit->ip, frame_size(jit, info));
 				if (op->arg_size == sizeof(float)) {
-// FIXME: konvence
 //					arm32_vmov_vreg_reg_float(jit->ip, ARMREG_R0, a1);
+					arm32_vcvt_dtos(jit->ip, ARMREG_D0, a1);
 				} else {
 					arm32_vmov_vreg_vreg_double(jit->ip, ARMREG_D0, a1);
-			///		arm32_vmov_vreg_reg_double(jit->ip, ARMREG_R0, ARMREG_R1, a1);
+			//		arm32_vmov_vreg_reg_double(jit->ip, ARMREG_R0, ARMREG_R1, a1);
 				}
 				arm32_popall_but_r0123(jit->ip);
 				arm32_bx(jit->ip, ARMCOND_AL, ARMREG_LR);
@@ -1084,71 +1087,89 @@ op_complete:
 			// reg. allocator takes care of proper assignment of the register
 			if (op->arg_size == sizeof(float)) sparc_fstod(jit->ip, sparc_f0, sparc_f0);
 			break;
-
+*/
 		case (JIT_FLD | REG):
-			if (op->arg_size == sizeof(double)) sparc_lddf(jit->ip, a2, sparc_g0, a1); 
-			else {
-				sparc_ldf(jit->ip, a2, sparc_g0, a1);
-				sparc_fstod(jit->ip, a1, a1);
-			}
+			arm32_vldr_size(jit->ip, a1, a2, 0, op->arg_size);
 			break;
 
 		case (JIT_FLD | IMM):
-			if (op->arg_size == sizeof(double)) sparc_lddf_imm(jit->ip, sparc_g0, a2, a1);
-			else {
-				sparc_ldf_imm(jit->ip, sparc_g0, a2, a1);
-				sparc_fstod(jit->ip, a1, a1);
-			}
+			arm32_mov_reg_imm32(jit->ip, ARMREG_R12, a2);
+			arm32_vldr_size(jit->ip, a1, ARMREG_R12, 0, op->arg_size);
 			break;
 
 		case (JIT_FLDX | REG):
-			if (op->arg_size == sizeof(double)) sparc_lddf(jit->ip, a2, a3, a1); 
-			else {
-				sparc_ldf(jit->ip, a2, a3, a1);
-				sparc_fstod(jit->ip, a1, a1);
-			}
+			arm32_alu_reg_reg(jit->ip, ARMOP_ADD, ARMREG_R12, a2, a3);
+			arm32_vldr_size(jit->ip, a1, ARMREG_R12, 0, op->arg_size);
 			break;
 
 		case (JIT_FLDX | IMM):
-			if (op->arg_size == sizeof(double)) sparc_lddf_imm(jit->ip, a2, a3, a1);
+			if ((a3 >= -255 * 4) && (a3 <= 255 * 4)) arm32_vldr_size(jit->ip, a1, a2, a3, op->arg_size);
 			else {
-				sparc_ldf_imm(jit->ip, a2, a3, a1);
-				sparc_fstod(jit->ip, a1, a1);
+				arm32_mov_reg_imm32(jit->ip, ARMREG_R12, a3);
+				arm32_alu_reg_reg(jit->ip, ARMOP_ADD, ARMREG_R12, ARMREG_R12, a2);
+				arm32_vldr_size(jit->ip, a1, ARMREG_R12, 0, op->arg_size);
 			}
 			break;
 
 		case (JIT_FST | REG):
-			if (op->arg_size == sizeof(double)) sparc_stdf(jit->ip, a2, a1, sparc_g0);
+			if (op->arg_size == sizeof(double)) arm32_vstr_size(jit->ip, a2, a1, 0, op->arg_size);
 			else {
-				sparc_fdtos(jit->ip, a2, sparc_f30);
-				sparc_stf(jit->ip, sparc_f30, a1, sparc_g0);
+				int in_use = jit_reg_in_use(op, a2, 1);
+				if (in_use) arm32_vpush(jit->ip, a2);
+				arm32_vcvt_dtos(jit->ip, a2, a2);
+				arm32_vstr_size(jit->ip, a2, a1, 0, op->arg_size);
+				if (in_use) arm32_vpop(jit->ip, a2);
 			}
 			break;
 
 		case (JIT_FST | IMM):
-			if (op->arg_size == sizeof(double)) sparc_stdf_imm(jit->ip, a2, sparc_g0, a1);
+			arm32_mov_reg_imm32(jit->ip, ARMREG_R12, a2);
+			if (op->arg_size == sizeof(double)) arm32_vstr_size(jit->ip, a1, ARMREG_R12, 0, op->arg_size);
 			else {
-				sparc_fdtos(jit->ip, a2, sparc_f30);
-				sparc_stdf_imm(jit->ip, sparc_f30, sparc_g0, a1);
+				int in_use = jit_reg_in_use(op, a2, 1);
+				if (in_use) arm32_vpush(jit->ip, a2);
+				arm32_vcvt_dtos(jit->ip, a2, a2);
+				arm32_vstr_size(jit->ip, a1, ARMREG_R12, 0, op->arg_size);
+				if (in_use) arm32_vpop(jit->ip, a2);
 			}
 			break;
 
 		case (JIT_FSTX | REG):
-			if (op->arg_size == sizeof(double)) sparc_stdf(jit->ip, a3, a2, a1);
+			arm32_alu_reg_reg(jit->ip, ARMOP_ADD, ARMREG_R12, a1, a2);
+			if (op->arg_size == sizeof(double)) arm32_vstr_size(jit->ip, a3, ARMREG_R12, 0, op->arg_size);
 			else {
-				sparc_fdtos(jit->ip, a3, sparc_f30);
-				sparc_stf(jit->ip, sparc_f30, a2, a1);
+				int in_use = jit_reg_in_use(op, a3, 1);
+				if (in_use) arm32_vpush(jit->ip, a2);
+				arm32_vcvt_dtos(jit->ip, a3, a3);
+				arm32_vstr_size(jit->ip, a3, ARMREG_R12, 0, op->arg_size);
+				if (in_use) arm32_vpop(jit->ip, a3);
 			}
+
 			break;
 
 		case (JIT_FSTX | IMM):
-			if (op->arg_size == sizeof(double)) sparc_stdf_imm(jit->ip, a3, a2, a1);
-			else {
-				sparc_fdtos(jit->ip, a3, sparc_f30);
-				sparc_stf_imm(jit->ip, sparc_f30, a2, a1);
+			if (op->arg_size == sizeof(double)) {
+				if ((a1 >= -255 * 4) && (a1 <= 255 * 4)) arm32_vstr_size(jit->ip, a3, a2, a1, op->arg_size);
+				else {
+					arm32_mov_reg_imm32(jit->ip, ARMREG_R12, a1);
+					arm32_alu_reg_reg(jit->ip, ARMOP_ADD, ARMREG_R12, ARMREG_R12, a2);
+					arm32_vstr_size(jit->ip, a3, ARMREG_R12, 0, op->arg_size);
+				}
+			} else {
+				int in_use = jit_reg_in_use(op, a3, 1);
+				if (in_use) arm32_vpush(jit->ip, a2);
+				arm32_vcvt_dtos(jit->ip, a3, a3);
+				if ((a1 >= -255 * 4) && (a1 <= 255 * 4)) arm32_vstr_size(jit->ip, a3, a2, a1, op->arg_size);
+				else {
+					arm32_mov_reg_imm32(jit->ip, ARMREG_R12, a1);
+					arm32_alu_reg_reg(jit->ip, ARMOP_ADD, ARMREG_R12, ARMREG_R12, a2);
+					arm32_vstr_size(jit->ip, a3, ARMREG_R12, 0, op->arg_size);
+				}
+
+				if (in_use) arm32_vpop(jit->ip, a3);
 			}
 			break;
-*/
+
 		case (JIT_UREG): emit_ureg(jit, a1, a2); break;
 		case (JIT_SYNCREG): emit_ureg(jit, a1, a2); break;
 		case (JIT_LREG): 
