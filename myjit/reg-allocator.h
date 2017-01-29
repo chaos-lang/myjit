@@ -145,20 +145,24 @@ static void assign_regs_for_args(struct jit_reg_allocator * al, jit_op * op)
 	struct jit_func_info * info = (struct jit_func_info *) op->arg[1];
 
 	int assoc_gp_regs = 0;
-	int assoc_fp_regs = 0;
 	for (int i = 0; i < info->general_arg_cnt + info->float_arg_cnt; i++) {
-		int isfp_arg = (info->args[i].type == JIT_FLOAT_NUM);
+		struct jit_inp_arg *arg = &info->args[i];
+		int isfp_arg = (arg->type == JIT_FLOAT_NUM);
 		if (!isfp_arg && (assoc_gp_regs < al->gp_arg_reg_cnt)) {
 			rmap_assoc(op->regmap, jit_mkreg(JIT_RTYPE_INT, JIT_RTYPE_ARG, i), al->gp_arg_regs[assoc_gp_regs]);
 			assoc_gp_regs++;
 		}
-		if (isfp_arg) abort();
-/*
-		if (isfp_arg && (assoc_fp_regs < al->fp_arg_reg_cnt)) {
-			rmap_assoc(op->regmap, jit_mkreg(JIT_RTYPE_FLOAT, JIT_RTYPE_ARG, i), al->fp_arg_regs[assoc_fp_regs]);
-			assoc_fp_regs++;
+		// only double precision fp-arguments are associated with their registers
+		if (isfp_arg && (arg->size == sizeof(double))) {
+			jit_hw_reg *hreg = NULL;
+			for (int j = 0; j < al->fp_arg_reg_cnt; j++) {
+				if (al->fp_arg_regs[j]->id == arg->location.reg) {
+					hreg = al->fp_arg_regs[j];
+					break;
+				}
+			}
+			rmap_assoc(op->regmap, jit_mkreg(JIT_RTYPE_FLOAT, JIT_RTYPE_ARG, i), hreg);
 		}
-*/
 	}
 }
 #endif

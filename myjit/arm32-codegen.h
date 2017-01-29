@@ -647,6 +647,15 @@ arm32_emit(ins, \
 	| B(4,  0xc) \
 	| B(0,  vm))
 
+#define arm32_vcvt_double_sint(ins, vd, vm, round) arm32_emit_al(ins, \
+	  B(16, 0xebd) \
+	| B(12, vd) \
+	| B(8,  0xb) \
+	| B(7,  round) \
+	| B(4,  0x4) \
+	| B(0,  vm))
+
+
 #define arm32_vfp_data_transfer(ins, cond, load, flt, vd, rn, imm) \
 	do { \
 		int __val = (imm) / 4; \
@@ -665,11 +674,53 @@ arm32_emit(ins, \
 		if (load && flt) arm32_vcvt_stod(ins, vd, vd); \
 	} while (0)
 
+#define arm32_vfp_float_data_transfer(ins, cond, load, flt, vd, rn, imm) \
+	do { \
+		int __val = (imm) / 4; \
+		int __absval = (__val < 0 ? -__val : __val); \
+		arm32_emit_al(ins,\
+			  B(28, cond) \
+			| B(24, 0xd) \
+			| B(23, __val >= 0) /* UP => rn + rm */ \
+			| B(22, (vd) & 0x1) /* double */ \
+			| B(20, load) \
+			| B(16, rn) \
+			| B(12, (vd) >> 1) \
+			| B(9,  0x5) \
+			| B(8,  ((flt) ? 0x0: 0x1)) \
+			| B(0,  __absval & 0xff)); \
+		if (load && flt) arm32_vcvt_stod(ins, vd, vd); \
+	} while (0)
+
+
 #define arm32_vldr_size(ins, vd, rn, imm, size) \
 	arm32_vfp_data_transfer(ins, ARMCOND_AL, 1, (size) == sizeof(float), vd, rn, imm)
 
 #define arm32_vstr_size(ins, vd, rn, imm, size) \
 	arm32_vfp_data_transfer(ins, ARMCOND_AL, 0, (size) == sizeof(float), vd, rn, imm)
+
+#define arm32_vldr_fp_imm(ins, dest, _imm, _size) \
+	do { \
+		int __disp = _imm; \
+		if ((__disp >= -4095) && (__disp <= 4095))  { \
+			arm32_vldr_size(ins, dest, ARMREG_FP, __disp, _size); \
+		} else { \
+			arm32_mov_reg_imm32(ins, ARMREG_R12, __disp); \
+			arm32_vldr_size(ins, dest, ARMREG_FP, ARMREG_R12, _size); \
+		} \
+	} while (0)
+
+#define arm32_vstr_float_fp_imm(ins, dest, _imm) \
+	do { \
+		int __disp = _imm; \
+		if ((__disp >= -4095) && (__disp <= 4095))  { \
+			arm32_vfp_float_data_transfer(ins, ARMCOND_AL, 0, 1, dest, ARMREG_FP, __disp); \
+		} else { \
+			arm32_mov_reg_imm32(ins, ARMREG_R12, __disp); \
+			arm32_vfp_data_transfer(ins, ARMCOND_AL, 0, 1, dest, ARMREG_FP, ARMREG_R12); \
+		} \
+	} while (0)
+
 
 #define arm32_vmov_vreg_vreg_double(ins, vd, vn) arm32_emit_al(ins, \
 	  B(16, 0xeb0) \
@@ -757,7 +808,7 @@ arm32_emit(ins, \
 #define arm32_vcmp_double(ins, vd, vm) arm32_vfp_cmp_double(ins, vd, vm, 0)
 #define arm32_vcmp0_double(ins, vd) arm32_vfp_cmp_double(ins, vd, 0, 1)
 
-#define arm32_vmrs(ins) arm32_emit_al(ins, \
+#define arm32_vmrs_flags(ins) arm32_emit_al(ins, \
 	  B(20, 0xef) \
 	| B(16, 0x1) /* FPSCR */ \
 	| B(12, 0xf) /* APSR */ \
@@ -776,5 +827,12 @@ arm32_emit(ins, \
 	| B(8,  0xa) \
 	| B(8, 2))
 
+#define arm32_vfp_fpscr(ins, read, r) arm32_emit_al(ins, \
+	  B(21, 0x77) \
+	| B(20, read) \
+	| B(16, 0x1) \
+	| B(12, r) \
+	| B(0,  0xa10))
 
-
+#define arm32_vmsr(ins, rn) arm32_vfp_fpscr(ins, 0, rn)
+#define arm32_vmrs(ins, rd) arm32_vfp_fpscr(ins, 0, rd)
