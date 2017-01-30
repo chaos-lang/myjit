@@ -651,7 +651,7 @@ arm32_emit(ins, \
 	  B(16, 0xebd) \
 	| B(12, vd) \
 	| B(8,  0xb) \
-	| B(7,  round) \
+	| B(7, (!round) & 0x1) \
 	| B(4,  0x4) \
 	| B(0,  vm))
 
@@ -709,6 +709,18 @@ arm32_emit(ins, \
 			arm32_vldr_size(ins, dest, ARMREG_FP, ARMREG_R12, _size); \
 		} \
 	} while (0)
+
+#define arm32_vstr_fp_imm(ins, dest, _imm, _size) \
+	do { \
+		int __disp = _imm; \
+		if ((__disp >= -4095) && (__disp <= 4095))  { \
+			arm32_vstr_size(ins, dest, ARMREG_FP, __disp, _size); \
+		} else { \
+			arm32_mov_reg_imm32(ins, ARMREG_R12, __disp); \
+			arm32_vstr_size(ins, dest, ARMREG_FP, ARMREG_R12, _size); \
+		} \
+	} while (0)
+
 
 #define arm32_vstr_float_fp_imm(ins, dest, _imm) \
 	do { \
@@ -818,14 +830,14 @@ arm32_emit(ins, \
 #define arm32_vpush(ins, vd) arm32_emit_al(ins, \
 	  B(16, 0xd2d) \
 	| B(12, vd) \
-	| B(8,  0xa) \
-	| B(8, 2))
+	| B(8,  0xb) \
+	| B(0, 2))
 
 #define arm32_vpop(ins, vd) arm32_emit_al(ins, \
 	  B(16, 0xcbd) \
 	| B(12, vd) \
-	| B(8,  0xa) \
-	| B(8, 2))
+	| B(8,  0xb) \
+	| B(0, 2))
 
 #define arm32_vfp_fpscr(ins, read, r) arm32_emit_al(ins, \
 	  B(21, 0x77) \
@@ -835,4 +847,10 @@ arm32_emit(ins, \
 	| B(0,  0xa10))
 
 #define arm32_vmsr(ins, rn) arm32_vfp_fpscr(ins, 0, rn)
-#define arm32_vmrs(ins, rd) arm32_vfp_fpscr(ins, 0, rd)
+#define arm32_vmrs(ins, rd) arm32_vfp_fpscr(ins, 1, rd)
+
+#define arm32_vabs(ins, vd, vm) arm32_emit_al(ins, \
+	  B(16, 0xeb0) \
+	| B(12, vd) \
+	| B(4,  0xbc) \
+	| B(0,  vm))

@@ -381,7 +381,11 @@ static void associate_register(struct jit_reg_allocator * al, jit_op * op, int i
 	jit_hw_reg * reg = rmap_get(op->regmap, op->arg[i]);
 	if (reg) op->r_arg[i] = reg->id;
 	else {
-		if (!is_transfer_op(op)) {
+		if (!is_transfer_op(op) 
+#if defined(JIT_ARCH_AMD64) || defined(JIT_ARCH_ARM32)
+		&& (GET_OP(op) != JIT_CALL)
+#endif
+		) {
 			reg = make_free_reg(al, op, op->arg[i]);
 			rmap_assoc(op->regmap, op->arg[i], reg);
 
