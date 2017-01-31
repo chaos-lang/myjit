@@ -286,9 +286,7 @@ static inline void emit_set_fparg(struct jit * jit, struct jit_out_arg *arg)
                         if (reg != sreg) arm32_vmov_vreg_vreg_double(jit->ip, reg, sreg);
                 }
         } else {
-		static double zzz = 99.9999;
-		//arm32_mov_reg_imm32(jit->ip, ARMREG_R12, &arg->value.fp);
-		arm32_mov_reg_imm32(jit->ip, ARMREG_R12, &zzz);
+		arm32_mov_reg_imm32(jit->ip, ARMREG_R12, &arg->value.fp);
 		arm32_vldr_size(jit->ip, reg, ARMREG_R12, 0, sizeof(double));
 	}
 }
@@ -741,7 +739,7 @@ int frame_size(struct jit *jit, struct jit_func_info *info) {
 	stack_mem += info->general_arg_cnt * REG_SIZE; 
 	stack_mem += info->fp_reg_count * sizeof(double);
 	stack_mem += info->float_arg_cnt * sizeof(double);
-	return stack_mem;
+	return jit_value_align(stack_mem, 8);
 }
 
 
@@ -974,7 +972,6 @@ op_complete:
 				arm32_pushall_but_r0123(jit->ip);
 				arm32_mov_reg_reg(jit->ip, ARMREG_FP, ARMREG_SP);
 				arm32_sub_sp_imm(jit->ip, frame_size(jit, info));
-				arm32_alu_reg_imm(jit->ip, ARMOP_SUB, ARMREG_FP, ARMREG_FP, 16);
 				// saves single precision values on stack
 				for (int i = 0; i < info->general_arg_cnt + info->float_arg_cnt; i++) {
 					struct jit_inp_arg a = info->args[i];
