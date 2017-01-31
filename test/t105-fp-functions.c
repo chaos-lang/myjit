@@ -185,11 +185,25 @@ DEFINE_TEST(test5)
         return 0;
 }
 
+#if !defined(JIT_ARCH_ARM32)
+#define SPRINTF sprintf
+#else
+/* ARM32 does not support variadic functions */
+static void xsprintf(char *buf, char *fmt, double value)
+{
+	sprintf(buf, fmt, value);
+}
+#define SPRINTF	xsprintf
+
+#endif
+
+
 // prints ``hello, world!''
 DEFINE_TEST(test6)
 {
 	static char *str = "Hello, World! Lucky number for today is %.3f!!!\n";
         static char buf[120];
+
 	plfv f1; 
 
 	jit_prolog(p, &f1);
@@ -197,7 +211,7 @@ DEFINE_TEST(test6)
 	
 	jit_fmovi(p, FR(1), 12345.678);
 
-	jit_movi(p, R(2), sprintf);
+	jit_movi(p, R(2), SPRINTF);
 
 	jit_prepare(p);
 	jit_putargi(p, buf);
@@ -210,8 +224,9 @@ DEFINE_TEST(test6)
 	jit_retr(p, R(2));
 	JIT_GENERATE_CODE(p);
 
-	ASSERT_EQ((jit_value)sprintf, f1());
+	ASSERT_EQ((jit_value)SPRINTF, f1());
 	ASSERT_EQ_STR("Hello, World! Lucky number for today is 12345.678!!!\n", buf);
+
 	return 0;
 }
 
@@ -340,6 +355,113 @@ DEFINE_TEST(test8)
         return 0;
 }
 
+double incd(double x, double y) {
+	return x + 1.0;
+}
+
+DEFINE_TEST(test10)
+{
+	pdfd f1; 
+
+	jit_prolog(p, &f1);
+	jit_declare_arg(p, JIT_FLOAT_NUM, sizeof(double));
+	jit_getarg(p, FR(1), 0);
+
+	jit_force_spill(p, FR(1));
+	jit_prepare(p);
+	jit_fputargr(p, FR(1), sizeof(double));
+	jit_call(p, incd);
+	jit_fretval(p, FR(0), sizeof(double));
+	jit_fretr(p, FR(0), sizeof(double));
+
+	JIT_GENERATE_CODE(p);
+
+	ASSERT_EQ_DOUBLE(2.1, f1(1.1));
+
+	return 0;
+}
+
+double addd(double x, double y) {
+	return x + y;
+}
+
+DEFINE_TEST(test11)
+{
+	pdfd f1; 
+
+	jit_prolog(p, &f1);
+	jit_declare_arg(p, JIT_FLOAT_NUM, sizeof(double));
+	jit_getarg(p, FR(1), 0);
+
+	jit_force_spill(p, FR(1));
+	jit_prepare(p);
+	jit_fputargr(p, FR(1), sizeof(double));
+	jit_fputargi(p, 3.3, sizeof(double));
+	jit_call(p, addd);
+	jit_fretval(p, FR(0), sizeof(double));
+	jit_fretr(p, FR(0), sizeof(double));
+
+	JIT_GENERATE_CODE(p);
+
+	ASSERT_EQ_DOUBLE(4.4, f1(1.1));
+
+	return 0;
+}
+
+double addid(int x, double y) {
+	return x + y;
+}
+
+DEFINE_TEST(test12)
+{
+	pdfd f1; 
+
+	jit_prolog(p, &f1);
+	jit_declare_arg(p, JIT_FLOAT_NUM, sizeof(double));
+	jit_getarg(p, FR(1), 0);
+
+	jit_prepare(p);
+	jit_putargi(p, 3);
+	jit_fputargr(p, FR(1), sizeof(double));
+	jit_call(p, addid);
+	jit_fretval(p, FR(0), sizeof(double));
+	jit_fretr(p, FR(0), sizeof(double));
+
+	JIT_GENERATE_CODE(p);
+
+	ASSERT_EQ_DOUBLE(4.1, f1(1.1));
+
+	return 0;
+}
+
+double addiid(int x, int y, double z) {
+	return x + y + z;
+}
+
+DEFINE_TEST(test13)
+{
+	pdfd f1; 
+
+	jit_prolog(p, &f1);
+	jit_declare_arg(p, JIT_FLOAT_NUM, sizeof(double));
+	jit_getarg(p, FR(1), 0);
+
+	jit_prepare(p);
+	jit_putargi(p, 3);
+	jit_putargi(p, 4);
+	jit_fputargr(p, FR(1), sizeof(double));
+	jit_call(p, addiid);
+	jit_fretval(p, FR(0), sizeof(double));
+	jit_fretr(p, FR(0), sizeof(double));
+
+	JIT_GENERATE_CODE(p);
+
+	ASSERT_EQ_DOUBLE(8.1, f1(1.1));
+
+	return 0;
+}
+
+
 void test_setup()
 {
 	test_filename = __FILE__;
@@ -351,4 +473,8 @@ void test_setup()
 	SETUP_TEST(test6);
 	SETUP_TEST(test7); 
 	SETUP_TEST(test8); 
+	SETUP_TEST(test10); 
+	SETUP_TEST(test11); 
+	SETUP_TEST(test12); 
+	SETUP_TEST(test13); 
 }
