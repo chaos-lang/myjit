@@ -308,9 +308,9 @@ static int assign_call(jit_op * op, struct jit_reg_allocator * al)
 		}
 	}
 #endif
-#ifdef JIT_ARCH_AMD64
+#if defined(JIT_ARCH_AMD64) || defined(JIT_ARCH_ARM32)
 	// since the CALLR may use the given register also to pass an argument,
-	// code genarator has to take care of the register value itself
+	// code generator has to take care of the register value itself
 	return 1;
 #else
 	return 0;
@@ -515,13 +515,13 @@ void jit_collect_statistics(struct jit * jit)
 			new_hint->refs = 0;
 
 			new_hint->last_pos = ops_from_return;
-#ifdef JIT_ARCH_COMMON86
+#if defined (JIT_ARCH_COMMON86) || defined (JIT_ARCH_ARM32)
 			if ((GET_OP(op) == JIT_RETVAL) || (GET_OP(op) == JIT_RET)) 
 				new_hint->should_be_eax++;
 #endif 
 			new_hints = jit_tree_insert(new_hints, reg, new_hint, NULL);
 		}
-#ifdef JIT_ARCH_COMMON86
+#if defined (JIT_ARCH_COMMON86) || defined (JIT_ARCH_ARM32)
 		if (GET_OP(op) == JIT_CALL) mark_calleesaved_regs(new_hints, op);
 #endif
 		hints_refcount_inc(new_hints);

@@ -106,9 +106,11 @@ void jit_init_arg_params(struct jit *jit, struct jit_func_info *info, int p, int
 	}
 
 	// FP argument
+
+	// identicky kod v planovaci registru
 	int pos = a->fp_pos;
 	int reg_index = 0;
-	char free_slots[32];
+	char free_slots[16];
 	int free_slots_cnt = 0;
 	for (int i = 0; i < p; i++) {
 		if (info->args[i].type == JIT_FLOAT_NUM) {
@@ -255,33 +257,16 @@ static inline int is_spilled(int arg_id, jit_op * prepare_op, int * reg)
 }
 
 /**
- * Assigns integer value to register which is used to pass the argument
- */
-static inline void emit_set_arg(struct jit * jit, struct jit_out_arg * arg)
-{
-        int sreg;
-        int reg = jit->reg_al->gp_arg_regs[arg->argpos]->id;
-        jit_value value = arg->value.generic;
-        if (arg->isreg) {
-                if (is_spilled(value, jit->prepared_args.op, &sreg)) {
-                        arm32_ld_fp_imm(jit->ip, reg, GET_REG_POS(jit, value));
-                } else {
-                        if (reg != sreg) arm32_mov_reg_reg(jit->ip, reg, sreg);
-                }
-        } else arm32_mov_reg_imm32(jit->ip, reg, value);
-}
-
-/**
  * Assigns flaoting value to register which is used to pass the argument
  */
-static inline void emit_set_fparg(struct jit * jit, struct jit_out_arg *arg)
+static inline void emit_set_fparg(struct jit *jit, struct jit_out_arg *arg, int index)
 {
         int sreg;
-        int reg = jit->reg_al->gp_arg_regs[arg->argpos]->id;
+        int reg = jit->reg_al->fp_arg_regs[index]->id;
         jit_value value = arg->value.generic;
         if (arg->isreg) {
                 if (is_spilled(value, jit->prepared_args.op, &sreg)) {
-                        //arm32_vldr_fp_imm(jit->ip, reg, GET_REG_POS(jit, value), sizeof(double));
+                        arm32_vldr_fp_imm(jit->ip, reg, GET_REG_POS(jit, value), sizeof(double));
                 } else {
                         if (reg != sreg) arm32_vmov_vreg_vreg_double(jit->ip, reg, sreg);
                 }
@@ -291,57 +276,178 @@ static inline void emit_set_fparg(struct jit * jit, struct jit_out_arg *arg)
 	}
 }
 
+struct jit_scheduled_argument {
+	int index; // in register pool or on the stack
+	char isfp;
+	char passed_in_reg;
+	struct jit_out_arg *oarg;
+};
 
-/**
- * Pushes integer value on the stack
- */
-static inline void emit_push_arg(struct jit * jit, struct jit_out_arg * arg)
+struct jit_argument_schedule {
+	int arg_index;		// number of arguments scheduled so far
+	int gp_index;	 	// next GP register to use
+	int fp_index;		// next FP register to use
+	int stack_index;	// next stack position to use
+	char allocated_fp[32];  // info on allocated FP registers
+	struct jit_scheduled_argument arguments[];
+};
+
+struct jit_argument_schedule *argument_schedule_create(int arg_cnt)
 {
-        int sreg;
-        if (arg->isreg) {
-                if (is_spilled(arg->value.generic, jit->prepared_args.op, &sreg)) {
-			arm32_ld_fp_imm(jit->ip, ARMREG_R12, GET_REG_POS(jit, arg->value.generic));
-                        arm32_push_reg(jit->ip, ARMREG_R12);
-		} else {
-			arm32_push_reg(jit->ip, sreg);
+	struct jit_argument_schedule *schedule = JIT_MALLOC(sizeof(struct jit_argument_schedule) + sizeof(struct jit_scheduled_argument) * arg_cnt);
+	schedule->arg_index = 0;
+	schedule->gp_index = 0;
+	schedule->fp_index = 0;
+	schedule->stack_index = 0;
+	for (int i = 0; i < sizeof(schedule->allocated_fp); i++)
+		schedule->allocated_fp[i] = 0;
+	return schedule;
+}
+
+static void argument_schedule_add_gp_arg(struct jit_argument_schedule *schedule, struct jit *jit, struct jit_out_arg *arg)
+{
+	int i = schedule->arg_index ++;
+	schedule->arguments[i].oarg = arg;
+	schedule->arguments[i].isfp = 0;
+	if (schedule->gp_index < jit->reg_al->gp_arg_reg_cnt) {
+		schedule->arguments[i].passed_in_reg = 1;
+		schedule->arguments[i].index = schedule->gp_index ++;
+	} else {
+		schedule->arguments[i].passed_in_reg = 0;
+		schedule->arguments[i].index = schedule->stack_index;
+		schedule->stack_index ++; 
+	}
+}
+
+static void argument_schedule_add_fp_arg(struct jit_argument_schedule *schedule, struct jit *jit, struct jit_out_arg *arg)
+{
+	int i = schedule->arg_index ++;
+	schedule->arguments[i].oarg = arg;
+	schedule->arguments[i].isfp = 1;
+	int step = (arg->size == sizeof(float) ? 1 : 2);
+	int index = -1;
+	for (int j = 0; j <= jit->reg_al->fp_arg_reg_cnt * 2 - step; j += step) {
+		if (((step == 1) && !schedule->allocated_fp[j])
+		||  ((step == 2) && !schedule->allocated_fp[j] && !schedule->allocated_fp[j + 1])) {
+			index = j;
+			for (int k = 0; k < step; k++)
+				schedule->allocated_fp[index + k] = 1;
+			break;
 		}
-        } else {
-		arm32_mov_reg_imm32(jit->ip, ARMREG_R12, arg->value.generic);
-		arm32_push_reg(jit->ip, ARMREG_R12);
-        }
+	}
+	if (index >= 0) {
+		schedule->arguments[i].passed_in_reg = 1;
+		schedule->arguments[i].index = index;
+	} else {
+		schedule->arguments[i].passed_in_reg = 0;
+		schedule->arguments[i].index = schedule->stack_index;
+		schedule->stack_index += step;
+ 	}
+}
+
+static struct jit_argument_schedule *argument_schedule_create_output(struct jit *jit, struct jit_prepared_args *prepared_args)
+{
+	int arg_cnt = jit->prepared_args.count;
+	struct jit_argument_schedule *schedule = argument_schedule_create(arg_cnt);
+	struct jit_out_arg *args = prepared_args->args;
+
+	for (int i = 0; i < arg_cnt; i++) {
+                struct jit_out_arg *arg = &(args[i]);
+		if (!arg->isfp) argument_schedule_add_gp_arg(schedule, jit, arg);
+		else argument_schedule_add_fp_arg(schedule, jit, arg);
+	}
+	return schedule;
 }
 
 
-static inline int emit_arguments(struct jit * jit)
-{
-	struct jit_out_arg * args = jit->prepared_args.args;
 
-	int gp_pushed = MAX(jit->prepared_args.gp_args - jit->reg_al->gp_arg_reg_cnt, 0);
-/*
-	int fp_regs[32];
-	for (int i = 0; i < 32; i++)
-		fp_regs[i] = i;
-*/
-        for (int x = jit->prepared_args.count - 1; x >= 0; x --) {
-                struct jit_out_arg * arg = &(args[x]);
-                if (!arg->isfp) {
-                        if (arg->argpos < jit->reg_al->gp_arg_reg_cnt) emit_set_arg(jit, arg);
-                        else emit_push_arg(jit, arg);
-                } else {
-			if (arg->argpos < 8) {
-				emit_set_fparg(jit, arg);		
+
+static void emit_pass_gp_arg(struct jit *jit, struct jit_scheduled_argument *sched)
+{
+	int index = sched->index;
+	struct jit_out_arg *arg = sched->oarg;
+	int passed_in_reg = sched->passed_in_reg;
+
+	int dreg = (passed_in_reg ? jit->reg_al->gp_arg_regs[index]->id : ARMREG_R12);
+
+	if (arg->isreg) { // passing value from the register
+		int sreg;
+		long reg = arg->value.generic;
+		if (is_spilled(reg, jit->prepared_args.op, &sreg)) {
+			arm32_ld_fp_imm(jit->ip, dreg, GET_REG_POS(jit, reg));
+		} else {
+			if (dreg != sreg) arm32_mov_reg_reg(jit->ip, dreg, sreg);
+		}
+	} else { // passing an immediate value
+		arm32_mov_reg_imm32(jit->ip, dreg, arg->value.generic);
+	}
+
+	if (!passed_in_reg) arm32_push_reg(jit->ip, ARMREG_R12);
+}
+
+static int emit_arguments(struct jit *jit)
+{
+	int stack_size = 0;
+	int arg_cnt = jit->prepared_args.count;
+	struct jit_argument_schedule *schedule = argument_schedule_create_output(jit, &jit->prepared_args);
+
+	for (int i = arg_cnt - 1; i >= 0; i--) {
+//		struct jit_out_arg *arg = schedule->arguments[i].arg;
+		if (!schedule->arguments[i].passed_in_reg) {
+			if (!schedule->arguments[i].isfp) {
+				emit_pass_gp_arg(jit, schedule->arguments);
+				stack_size += REG_SIZE;
+			} else {
+//				emit_fppush_arg(jit, arg);
+//				stack_size += arg->size;
 			}
-  //                      if (arg->argpos < jit->reg_al->fp_arg_reg_cnt) emit_set_fparg(jit, arg);
-//                        else emit_fppush_arg(jit, arg);
-                }
-        }
-	return 0;
+		}
+	}
+
+	for (int i = 0; i < arg_cnt; i++) {
+		if (schedule->arguments[i].passed_in_reg) {
+			struct jit_scheduled_argument *arg = &(schedule->arguments[i]);
+			struct jit_out_arg *oarg = arg->oarg;
+			if (!arg->isfp) emit_pass_gp_arg(jit, arg);
+			else emit_set_fparg(jit, oarg, arg->index / 2);
+		}
+	}
+	JIT_FREE(schedule);
+	return stack_size;
 }
 
 static inline void emit_funcall(struct jit * jit, struct jit_op * op, int imm)
 {
-	// XXX: caller saved registers?
+	int stack_adjustment = 0;
+	for (int i = 0; i < jit->reg_al->gp_reg_cnt; i++) {
+		jit_hw_reg *r = &jit->reg_al->gp_regs[i];
+		if (!r->callee_saved) {
+			if (jit_reg_in_use(op, r->id, 0)) {
+				arm32_push_reg(jit->ip, r->id);
+				stack_adjustment += 4;
+			}
+		}
+	}
+
+	for (int i = 0; i < jit->reg_al->fp_reg_cnt; i++) {
+		jit_hw_reg *r = &jit->reg_al->fp_regs[i];
+		if (!r->callee_saved) {
+			if (jit_reg_in_use(op, r->id, 1)) {
+				arm32_vpush(jit->ip, r->id);
+			}
+		}
+	}
+
+
+	stack_adjustment %= 8;
+
+	if (stack_adjustment)
+		arm32_sub_sp_imm(jit->ip, stack_adjustment);
+
+//	arm32_sub_sp_imm(jit->ip, 4);
 	int stack_correction = emit_arguments(jit);
+	
+//	stack_correction = 4;
 	if (!imm) {
 		jit_hw_reg *hreg = rmap_get(op->regmap, op->arg[0]);
                 if (hreg) arm32_blx_reg(jit->ip, hreg->id);
@@ -350,18 +456,44 @@ static inline void emit_funcall(struct jit * jit, struct jit_op * op, int imm)
 			arm32_blx_reg(jit->ip, ARMREG_R12);
 		}
 	} else {
-		if (op->r_arg[0] == (long)JIT_FORWARD) {
+		if (op->arg[0] == (long)JIT_FORWARD) {
 			arm32_bl_imm(jit->ip, 0); 
-		} else if (jit_is_label(jit, (void *)op->r_arg[0])) {
-			arm32_bl_imm(jit->ip, (((long)jit->buf - (long)jit->ip) + (long)((jit_label *)(op->r_arg[0]))->pos - 8) / 4); 
+		} else if (jit_is_label(jit, (void *)op->arg[0])) {
+			arm32_bl_imm(jit->ip, (((long)jit->buf - (long)jit->ip) + (long)((jit_label *)(op->arg[0]))->pos - 8) / 4); 
 		} else {
-			arm32_mov_reg_imm32(jit->ip, ARMREG_R12, (long) op->r_arg[0]);
+			arm32_mov_reg_imm32(jit->ip, ARMREG_R12, (long) op->arg[0]);
 			arm32_blx_reg(jit->ip, ARMREG_R12);
 		}
 	}
-	stack_correction += jit->prepared_args.stack_size;
+
+	for (int i = jit->reg_al->fp_reg_cnt - 1; i >= 0; i--) {
+		jit_hw_reg *r = &jit->reg_al->fp_regs[i];
+		if (!r->callee_saved) {
+			if (jit_reg_in_use(op, r->id, 1)) {
+				arm32_vpop(jit->ip, r->id);
+			}
+		}
+	}
+
+
+
+//	stack_correction += jit->prepared_args.stack_size;
+
 	if (stack_correction)
 		arm32_add_sp_imm(jit->ip, stack_correction);
+
+	if (stack_adjustment)
+		arm32_add_sp_imm(jit->ip, stack_adjustment);
+
+
+	for (int i = jit->reg_al->gp_reg_cnt - 1; i >= 0; i--) {
+		jit_hw_reg *r = &jit->reg_al->gp_regs[i];
+		if (!r->callee_saved) {
+			if (jit_reg_in_use(op, r->id, 0)) {
+				arm32_pop_reg(jit->ip, r->id);
+			}
+		}
+	}
 }
 
 static void emit_get_arg_int(struct jit * jit, struct jit_inp_arg * arg, int dest_reg, int associated)
@@ -739,7 +871,7 @@ int frame_size(struct jit *jit, struct jit_func_info *info) {
 	stack_mem += info->general_arg_cnt * REG_SIZE; 
 	stack_mem += info->fp_reg_count * sizeof(double);
 	stack_mem += info->float_arg_cnt * sizeof(double);
-	return jit_value_align(stack_mem, 8);
+	return jit_value_align(stack_mem, 8) + 16;
 }
 
 
@@ -1198,7 +1330,7 @@ op_complete:
 			if (JIT_REG_SPEC(a2) == JIT_RTYPE_ARG) assert(0);
 			if (JIT_REG_TYPE(a2) == JIT_RTYPE_INT)
 				arm32_ld_fp_imm(jit->ip, a1, GET_REG_POS(jit, a2));
-			else arm32_ld_fp_imm(jit->ip, a1, GET_REG_POS(jit, a2));
+			else arm32_vldr_fp_imm(jit->ip, a1, GET_REG_POS(jit, a2), sizeof(double));
 			break;
 		case JIT_RENAMEREG: arm32_mov_reg_reg(jit->ip, a1, a2); break;
 
@@ -1242,14 +1374,14 @@ struct jit_reg_allocator * jit_reg_allocator_create()
 	a->fp_regs[5] = (jit_hw_reg) { ARMREG_D5, "D5", 0, 1, 6 };
 	a->fp_regs[6] = (jit_hw_reg) { ARMREG_D6, "D6", 0, 1, 7 };
 	a->fp_regs[7] = (jit_hw_reg) { ARMREG_D7, "D7", 0, 1, 8 };
-	a->fp_regs[8] = (jit_hw_reg) { ARMREG_D8, "D8", 0, 1, 9 };
-	a->fp_regs[9] = (jit_hw_reg) { ARMREG_D9, "D9", 0, 1, 10 };
-	a->fp_regs[10] = (jit_hw_reg) { ARMREG_D10, "D10", 0, 1, 11 };
-	a->fp_regs[11] = (jit_hw_reg) { ARMREG_D11, "D11", 0, 1, 12 };
-	a->fp_regs[12] = (jit_hw_reg) { ARMREG_D12, "D12", 0, 1, 13 };
-	a->fp_regs[13] = (jit_hw_reg) { ARMREG_D13, "D13", 0, 1, 14 };
-	a->fp_regs[14] = (jit_hw_reg) { ARMREG_D14, "D14", 0, 1, 15 };
-	a->fp_regs[15] = (jit_hw_reg) { ARMREG_D15, "D15", 0, 1, 16 };
+	a->fp_regs[8] = (jit_hw_reg) { ARMREG_D8, "D8", 1, 1, 9 };
+	a->fp_regs[9] = (jit_hw_reg) { ARMREG_D9, "D9", 1, 1, 10 };
+	a->fp_regs[10] = (jit_hw_reg) { ARMREG_D10, "D10", 1, 1, 11 };
+	a->fp_regs[11] = (jit_hw_reg) { ARMREG_D11, "D11", 1, 1, 12 };
+	a->fp_regs[12] = (jit_hw_reg) { ARMREG_D12, "D12", 1, 1, 13 };
+	a->fp_regs[13] = (jit_hw_reg) { ARMREG_D13, "D13", 1, 1, 14 };
+	a->fp_regs[14] = (jit_hw_reg) { ARMREG_D14, "D14", 1, 1, 15 };
+	a->fp_regs[15] = (jit_hw_reg) { ARMREG_D15, "D15", 1, 1, 16 };
 
 
 	a->fp_reg = ARMREG_SP;
