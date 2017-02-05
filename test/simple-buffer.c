@@ -18,3 +18,13 @@ static char *simple_buffer(int op, char *format_str, ...)
 	}
 	return buf;
 }
+
+static char *simple_buffer_d(int op, char *format_str, double d)
+{
+	return simple_buffer(op, format_str, d);
+}
+
+static char *simple_buffer_dd(int op, char *format_str, double d1, double d2)
+{
+	return simple_buffer(op, format_str, d1, d2);
+}

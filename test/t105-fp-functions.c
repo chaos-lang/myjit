@@ -124,7 +124,6 @@ DEFINE_TEST(test4)
 
 	JIT_GENERATE_CODE(p);
 
-        JIT_GENERATE_CODE(p);
         ASSERT_EQ_DOUBLE(832040.0, f1(30));
         return 0;
 }
@@ -269,7 +268,11 @@ DEFINE_TEST(test7)
 	jit_putargi(p, BUFFER_PUT);
 	jit_putargi(p, formatstr);
 	jit_fputargr(p, FR(1), sizeof(double));
+#ifdef JIT_ARCH_ARM32
+      jit_call(p, simple_buffer_d);
+#else
 	jit_call(p, simple_buffer);
+#endif
 
 	jit_addi(p, R(0), R(0), sizeof(double));
 	jit_subi(p, R(2), R(2), 1);
@@ -342,7 +345,11 @@ DEFINE_TEST(test8)
 	jit_fputargr(p, FR(0), sizeof(double));
 	jit_fputargr(p, FR(1), sizeof(double));
 
+#ifndef JIT_ARCH_ARM32
 	jit_call(p, simple_buffer);
+#else
+	jit_call(p, simple_buffer_dd);
+#endif
 
 	jit_reti(p, 0);
 

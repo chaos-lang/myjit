@@ -53,7 +53,7 @@ t103: t103-fp-rounding.c jitlib-core.o tests.h
 t104: t104-fp-branches.c jitlib-core.o tests.h
 	$(CC) $(CFLAGS) -o t104 t104-fp-branches.c jitlib-core.o
 
-t105: t105-fp-functions.c jitlib-core.o tests.h
+t105: t105-fp-functions.c jitlib-core.o tests.h simple-buffer.c
 	$(CC) $(CFLAGS) -o t105 t105-fp-functions.c jitlib-core.o
 
 t107: t107-fp-args.c jitlib-core.o tests.h
