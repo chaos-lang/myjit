@@ -86,8 +86,157 @@ int jit_allocai(struct jit * jit, int size)
 	return stack_offset;
 }
 
+
+
+struct jit_scheduled_argument {
+	int index; // in register pool or on the stack
+	char isfp;
+	char passed_in_reg;
+	struct jit_out_arg *oarg;
+};
+
+struct jit_argument_schedule {
+	int arg_index;		// number of arguments scheduled so far
+	int gp_index;	 	// next GP register to use
+	int fp_index;		// next FP register to use
+	int stack_index;	// next stack position to use
+	char allocated_fp[32];  // info on allocated FP registers
+	struct jit_scheduled_argument arguments[];
+};
+
+struct jit_argument_schedule *argument_schedule_create(int arg_cnt)
+{
+	struct jit_argument_schedule *schedule = JIT_MALLOC(sizeof(struct jit_argument_schedule) + sizeof(struct jit_scheduled_argument) * arg_cnt);
+	schedule->arg_index = 0;
+	schedule->gp_index = 0;
+	schedule->fp_index = 0;
+	schedule->stack_index = 0;
+	for (int i = 0; i < sizeof(schedule->allocated_fp); i++)
+		schedule->allocated_fp[i] = 0;
+	return schedule;
+}
+
+static void argument_schedule_add_gp_arg(struct jit_argument_schedule *schedule, struct jit *jit, struct jit_out_arg *arg)
+{
+	int i = schedule->arg_index ++;
+	schedule->arguments[i].oarg = arg;
+	schedule->arguments[i].isfp = 0;
+	if (schedule->gp_index < jit->reg_al->gp_arg_reg_cnt) {
+		schedule->arguments[i].passed_in_reg = 1;
+		schedule->arguments[i].index = schedule->gp_index ++;
+	} else {
+		schedule->arguments[i].passed_in_reg = 0;
+		schedule->arguments[i].index = schedule->stack_index;
+		schedule->stack_index ++; 
+	}
+}
+
+static void argument_schedule_add_fp_arg(struct jit_argument_schedule *schedule, struct jit *jit, int size, struct jit_out_arg *arg)
+{
+	int i = schedule->arg_index ++;
+	schedule->arguments[i].oarg = arg;
+	schedule->arguments[i].isfp = 1;
+	int step = (size == sizeof(float) ? 1 : 2);
+	int index = -1;
+	for (int j = 0; j <= jit->reg_al->fp_arg_reg_cnt * 2 - step; j += step) {
+		if (((step == 1) && !schedule->allocated_fp[j])
+		||  ((step == 2) && !schedule->allocated_fp[j] && !schedule->allocated_fp[j + 1])) {
+			index = j;
+			for (int k = 0; k < step; k++)
+				schedule->allocated_fp[index + k] = 1;
+			break;
+		}
+	}
+	if (index >= 0) {
+		schedule->arguments[i].passed_in_reg = 1;
+		schedule->arguments[i].index = index;
+	} else {
+		schedule->arguments[i].passed_in_reg = 0;
+		schedule->arguments[i].index = schedule->stack_index;
+		schedule->stack_index += step;
+ 	}
+}
+
+static struct jit_argument_schedule *argument_schedule_create_output(struct jit *jit, struct jit_prepared_args *prepared_args)
+{
+	int arg_cnt = jit->prepared_args.count;
+	struct jit_argument_schedule *schedule = argument_schedule_create(arg_cnt);
+	struct jit_out_arg *args = prepared_args->args;
+
+	for (int i = 0; i < arg_cnt; i++) {
+                struct jit_out_arg *arg = &(args[i]);
+		if (!arg->isfp) argument_schedule_add_gp_arg(schedule, jit, arg);
+		else argument_schedule_add_fp_arg(schedule, jit, arg->size, arg);
+	}
+	return schedule;
+}
+
+static struct jit_argument_schedule *argument_schedule_create_input(struct jit *jit, struct jit_func_info *info, int arg_cnt)
+{
+	struct jit_argument_schedule *schedule = argument_schedule_create(arg_cnt + 1);
+
+	for (int i = 0; i <= arg_cnt; i++) {
+		struct jit_inp_arg *arg = &(info->args[i]);
+		if (arg->type != JIT_FLOAT_NUM) argument_schedule_add_gp_arg(schedule, jit, NULL);
+		else argument_schedule_add_fp_arg(schedule, jit, arg->size, NULL);
+	}
+	return schedule;
+}
+
+
+
 void jit_init_arg_params(struct jit *jit, struct jit_func_info *info, int p, int *phys_reg)
 {
+
+	struct jit_argument_schedule *schedule = argument_schedule_create_input(jit, info, p);
+	struct jit_inp_arg *a = &(info->args[p]);
+	struct jit_scheduled_argument *sa = &(schedule->arguments[p]);
+
+	a->passed_by_reg = sa->passed_in_reg; 
+	if (!sa->isfp) { // GP argument
+		if (sa->passed_in_reg) {
+			a->location.reg = jit->reg_al->gp_arg_regs[sa->index]->id;
+			a->spill_pos = GET_ARG_SPILL_POS(jit, info, p); 
+		} else {
+			//int stack_pos = (pos - jit->reg_al->gp_arg_reg_cnt) + MAX(0, (a->fp_pos - jit->reg_al->fp_arg_reg_cnt));
+			a->location.stack_pos = (10 + sa->index) * REG_SIZE;
+			a->spill_pos = a->location.stack_pos;
+		}
+		a->overflow = 0;
+		JIT_FREE(schedule);
+		return;
+	} 
+
+	if (a->size == sizeof(double)) {
+		if (sa->passed_in_reg) {
+			a->location.reg = jit->reg_al->fp_arg_regs[sa->index / 2]->id;
+			a->spill_pos = GET_FPARG_SPILL_POS(jit, info, a->fp_pos); 
+		} else {
+			abort();
+		}
+	}
+	if (a->size == sizeof(float)) {
+		int reg = sa->index;
+		if (sa->passed_in_reg) {
+			// float values passed in registers are moved to stack in the prologue
+			a->passed_by_reg = 0;
+			a->location.reg = reg;
+			a->spill_pos = GET_FPARG_SPILL_POS(jit, info, a->fp_pos);
+		} else {
+			abort();
+		}
+	}
+
+	if ((a->type == JIT_FLOAT_NUM) && (a->size == sizeof(double))) {
+		a->overflow = 1;
+		*phys_reg = *phys_reg + 1;
+	}
+
+
+	JIT_FREE(schedule);
+
+
+/*
 	struct jit_inp_arg *a = &(info->args[p]);
 	if (a->type != JIT_FLOAT_NUM) { // normal argument
 		int pos = a->gp_pos;
@@ -148,7 +297,7 @@ void jit_init_arg_params(struct jit *jit, struct jit_func_info *info, int p, int
 			abort();
 		}
 	}
-
+*/
 /*
 	if (pos < jit->reg_al->fp_arg_reg_cnt) {
 		
@@ -276,90 +425,6 @@ static inline void emit_set_fparg(struct jit *jit, struct jit_out_arg *arg, int 
 	}
 }
 
-struct jit_scheduled_argument {
-	int index; // in register pool or on the stack
-	char isfp;
-	char passed_in_reg;
-	struct jit_out_arg *oarg;
-};
-
-struct jit_argument_schedule {
-	int arg_index;		// number of arguments scheduled so far
-	int gp_index;	 	// next GP register to use
-	int fp_index;		// next FP register to use
-	int stack_index;	// next stack position to use
-	char allocated_fp[32];  // info on allocated FP registers
-	struct jit_scheduled_argument arguments[];
-};
-
-struct jit_argument_schedule *argument_schedule_create(int arg_cnt)
-{
-	struct jit_argument_schedule *schedule = JIT_MALLOC(sizeof(struct jit_argument_schedule) + sizeof(struct jit_scheduled_argument) * arg_cnt);
-	schedule->arg_index = 0;
-	schedule->gp_index = 0;
-	schedule->fp_index = 0;
-	schedule->stack_index = 0;
-	for (int i = 0; i < sizeof(schedule->allocated_fp); i++)
-		schedule->allocated_fp[i] = 0;
-	return schedule;
-}
-
-static void argument_schedule_add_gp_arg(struct jit_argument_schedule *schedule, struct jit *jit, struct jit_out_arg *arg)
-{
-	int i = schedule->arg_index ++;
-	schedule->arguments[i].oarg = arg;
-	schedule->arguments[i].isfp = 0;
-	if (schedule->gp_index < jit->reg_al->gp_arg_reg_cnt) {
-		schedule->arguments[i].passed_in_reg = 1;
-		schedule->arguments[i].index = schedule->gp_index ++;
-	} else {
-		schedule->arguments[i].passed_in_reg = 0;
-		schedule->arguments[i].index = schedule->stack_index;
-		schedule->stack_index ++; 
-	}
-}
-
-static void argument_schedule_add_fp_arg(struct jit_argument_schedule *schedule, struct jit *jit, struct jit_out_arg *arg)
-{
-	int i = schedule->arg_index ++;
-	schedule->arguments[i].oarg = arg;
-	schedule->arguments[i].isfp = 1;
-	int step = (arg->size == sizeof(float) ? 1 : 2);
-	int index = -1;
-	for (int j = 0; j <= jit->reg_al->fp_arg_reg_cnt * 2 - step; j += step) {
-		if (((step == 1) && !schedule->allocated_fp[j])
-		||  ((step == 2) && !schedule->allocated_fp[j] && !schedule->allocated_fp[j + 1])) {
-			index = j;
-			for (int k = 0; k < step; k++)
-				schedule->allocated_fp[index + k] = 1;
-			break;
-		}
-	}
-	if (index >= 0) {
-		schedule->arguments[i].passed_in_reg = 1;
-		schedule->arguments[i].index = index;
-	} else {
-		schedule->arguments[i].passed_in_reg = 0;
-		schedule->arguments[i].index = schedule->stack_index;
-		schedule->stack_index += step;
- 	}
-}
-
-static struct jit_argument_schedule *argument_schedule_create_output(struct jit *jit, struct jit_prepared_args *prepared_args)
-{
-	int arg_cnt = jit->prepared_args.count;
-	struct jit_argument_schedule *schedule = argument_schedule_create(arg_cnt);
-	struct jit_out_arg *args = prepared_args->args;
-
-	for (int i = 0; i < arg_cnt; i++) {
-                struct jit_out_arg *arg = &(args[i]);
-		if (!arg->isfp) argument_schedule_add_gp_arg(schedule, jit, arg);
-		else argument_schedule_add_fp_arg(schedule, jit, arg);
-	}
-	return schedule;
-}
-
-
 
 
 static void emit_pass_gp_arg(struct jit *jit, struct jit_scheduled_argument *sched)
@@ -382,7 +447,7 @@ static void emit_pass_gp_arg(struct jit *jit, struct jit_scheduled_argument *sch
 		arm32_mov_reg_imm32(jit->ip, dreg, arg->value.generic);
 	}
 
-	if (!passed_in_reg) arm32_push_reg(jit->ip, ARMREG_R12);
+	if (!passed_in_reg) arm32_push_reg(jit->ip, dreg);
 }
 
 static int emit_arguments(struct jit *jit)
@@ -392,10 +457,9 @@ static int emit_arguments(struct jit *jit)
 	struct jit_argument_schedule *schedule = argument_schedule_create_output(jit, &jit->prepared_args);
 
 	for (int i = arg_cnt - 1; i >= 0; i--) {
-//		struct jit_out_arg *arg = schedule->arguments[i].arg;
 		if (!schedule->arguments[i].passed_in_reg) {
 			if (!schedule->arguments[i].isfp) {
-				emit_pass_gp_arg(jit, schedule->arguments);
+				emit_pass_gp_arg(jit, &(schedule->arguments[i]));
 				stack_size += REG_SIZE;
 			} else {
 //				emit_fppush_arg(jit, arg);
