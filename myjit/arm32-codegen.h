@@ -640,6 +640,13 @@ arm32_emit(ins, \
 #define arm32_vcvt_stod(ins, vd, vm) arm32_vcvt(ins, 0, vd, vm)
 
 
+#define arm32_vcvt_dtos_vsreg(ins, vd, vm)  arm32_emit_al(ins, \
+	  B(16, 0xeb7) \
+	| B(12, ((vd) >> 1) & 0xf) \
+	| B(22, ((vd) & 0x1)) \
+	| B(4, 0xbc) \
+	| B(0, vm))
+
 #define arm32_vcvt_sint_double(ins, vd, vm) arm32_emit_al(ins, \
 	  B(16, 0xeb8) \
 	| B(12, vd) \
@@ -752,6 +759,13 @@ arm32_emit(ins, \
 	| B(12, rn) \
 	| B(0,  0xb10))
 
+#define arm32_vmov_vsreg_reg_float(ins, vn, rd) arm32_emit_al(ins, \
+	  B(20, 0xe0) \
+	| B(16, (vn & 0x1f) >> 1) \
+	| B(12, rd) \
+	| B(8, 0xa) \
+	| B(7, (vn & 0x1)) \
+	| B(0,  0x10))
 
 #define arm32_vmov_vreg_reg_double(ins, rd1, rd2, vn) arm32_emit_al(ins, \
 	  B(20, 0xc5) \

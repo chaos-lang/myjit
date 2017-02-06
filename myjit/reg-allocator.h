@@ -141,7 +141,7 @@ static void assign_regs_for_args(struct jit_reg_allocator * al, jit_op * op)
 #ifdef JIT_ARCH_ARM32
 static void assign_regs_for_args(struct jit_reg_allocator * al, jit_op * op)
 {
-	// XXX: pododne s X86
+	// XXX: similar to X86 code
 	struct jit_func_info * info = (struct jit_func_info *) op->arg[1];
 
 	int assoc_gp_regs = 0;
@@ -153,7 +153,7 @@ static void assign_regs_for_args(struct jit_reg_allocator * al, jit_op * op)
 			assoc_gp_regs++;
 		}
 		// only double precision fp-arguments are associated with their registers
-		if (isfp_arg && (arg->size == sizeof(double))) {
+		if (isfp_arg && (arg->passed_by_reg) && (arg->size == sizeof(double))) {
 			jit_hw_reg *hreg = NULL;
 			for (int j = 0; j < al->fp_arg_reg_cnt; j++) {
 				if (al->fp_arg_regs[j]->id == arg->location.reg) {
@@ -161,7 +161,7 @@ static void assign_regs_for_args(struct jit_reg_allocator * al, jit_op * op)
 					break;
 				}
 			}
-			rmap_assoc(op->regmap, jit_mkreg(JIT_RTYPE_FLOAT, JIT_RTYPE_ARG, i), hreg);
+			if (hreg) rmap_assoc(op->regmap, jit_mkreg(JIT_RTYPE_FLOAT, JIT_RTYPE_ARG, i), hreg);
 		}
 	}
 }

@@ -198,7 +198,6 @@ void jit_init_arg_params(struct jit *jit, struct jit_func_info *info, int p, int
 			a->location.reg = jit->reg_al->gp_arg_regs[sa->index]->id;
 			a->spill_pos = GET_ARG_SPILL_POS(jit, info, p); 
 		} else {
-			//int stack_pos = (pos - jit->reg_al->gp_arg_reg_cnt) + MAX(0, (a->fp_pos - jit->reg_al->fp_arg_reg_cnt));
 			a->location.stack_pos = (10 + sa->index) * REG_SIZE;
 			a->spill_pos = a->location.stack_pos;
 		}
@@ -212,7 +211,8 @@ void jit_init_arg_params(struct jit *jit, struct jit_func_info *info, int p, int
 			a->location.reg = jit->reg_al->fp_arg_regs[sa->index / 2]->id;
 			a->spill_pos = GET_FPARG_SPILL_POS(jit, info, a->fp_pos); 
 		} else {
-			abort();
+			a->location.stack_pos = (10 + sa->index) * REG_SIZE;
+			a->spill_pos = a->location.stack_pos;
 		}
 	}
 	if (a->size == sizeof(float)) {
@@ -223,98 +223,13 @@ void jit_init_arg_params(struct jit *jit, struct jit_func_info *info, int p, int
 			a->location.reg = reg;
 			a->spill_pos = GET_FPARG_SPILL_POS(jit, info, a->fp_pos);
 		} else {
-			abort();
-		}
-	}
-
-	if ((a->type == JIT_FLOAT_NUM) && (a->size == sizeof(double))) {
-		a->overflow = 1;
-		*phys_reg = *phys_reg + 1;
-	}
-
-
-	JIT_FREE(schedule);
-
-
-/*
-	struct jit_inp_arg *a = &(info->args[p]);
-	if (a->type != JIT_FLOAT_NUM) { // normal argument
-		int pos = a->gp_pos;
-		if (pos < jit->reg_al->gp_arg_reg_cnt) {
-			a->passed_by_reg = 1;
-			a->location.reg = jit->reg_al->gp_arg_regs[pos]->id;
-			a->spill_pos = GET_ARG_SPILL_POS(jit, info, p);
-		} else {
-			int stack_pos = (pos - jit->reg_al->gp_arg_reg_cnt) + MAX(0, (a->fp_pos - jit->reg_al->fp_arg_reg_cnt));
-			a->location.stack_pos = (10 + stack_pos) * 4;
+			a->location.stack_pos = (10 + sa->index) * REG_SIZE;
 			a->spill_pos = a->location.stack_pos;
-			a->passed_by_reg = 0;
-		}
-		a->overflow = 0;
-		return;
-	}
-
-	// FP argument
-
-	// identicky kod v planovaci registru
-	int pos = a->fp_pos;
-	int reg_index = 0;
-	char free_slots[16];
-	int free_slots_cnt = 0;
-	for (int i = 0; i < p; i++) {
-		if (info->args[i].type == JIT_FLOAT_NUM) {
-			if (info->args[i].size == sizeof(float)) {
-				if (free_slots_cnt) memmove(free_slots, free_slots + 1, --free_slots_cnt);
-				else reg_index ++;
-			} else {
-				if (reg_index % 2) {
-					free_slots[free_slots_cnt++] = reg_index;
-					reg_index ++;
-				}
-				reg_index += 2;
-			}
 		}
 	}
 
-	if (a->size == sizeof(double)) {
-		int reg = reg_index / 2;
-		if (reg < jit->reg_al->fp_arg_reg_cnt) {
-			a->passed_by_reg = 1;
-			a->location.reg = jit->reg_al->fp_arg_regs[pos]->id;
-			a->spill_pos = GET_FPARG_SPILL_POS(jit, info, pos); 
-		} else {
-			abort();
-		}
-	}
-	if (a->size == sizeof(float)) {
-		int reg = (free_slots_cnt > 0 ? free_slots[0] : reg_index);
-		if (reg < jit->reg_al->fp_arg_reg_cnt * 2) {
-			// float values passed in registers are moved to stack in the prologue
-			a->passed_by_reg = 0;
-			a->location.reg = reg;
-			a->spill_pos = GET_FPARG_SPILL_POS(jit, info, pos);
-		} else {
-			abort();
-		}
-	}
-*/
-/*
-	if (pos < jit->reg_al->fp_arg_reg_cnt) {
-		
-	} else {
-
-		int stack_pos = (pos - jit->reg_al->fp_arg_reg_cnt) + MAX(0, (a->gp_pos - jit->reg_al->gp_arg_reg_cnt));
-
-		a->location.stack_pos = (10 + stack_pos) * REG_SIZE;
-		a->spill_pos = a->location.stack_pos;
-		a->passed_by_reg = 0;
-	}
-
-	if ((a->type == JIT_FLOAT_NUM) && (a->size == sizeof(double))) {
-		a->overflow = 1;
-		*phys_reg = *phys_reg + 1;
-	}
-*/
+	a->overflow = 0;
+	JIT_FREE(schedule);
 }
 
 static inline void emit_cond_op(struct jit *jit, struct jit_op *op, int cond, int imm)
@@ -450,6 +365,65 @@ static void emit_pass_gp_arg(struct jit *jit, struct jit_scheduled_argument *sch
 	if (!passed_in_reg) arm32_push_reg(jit->ip, dreg);
 }
 
+static void emit_pass_fp_arg_double(struct jit *jit, struct jit_scheduled_argument *sched)
+{
+	int index = sched->index;
+	struct jit_out_arg *arg = sched->oarg;
+	int passed_in_reg = sched->passed_in_reg;
+	int dreg = (passed_in_reg ? jit->reg_al->fp_arg_regs[index / 2]->id : ARMREG_D15);
+
+	if (arg->isreg) { // passing value from the register
+		int sreg;
+		long reg = arg->value.generic;
+		if (is_spilled(reg, jit->prepared_args.op, &sreg)) {
+			arm32_vldr_fp_imm(jit->ip, dreg, GET_REG_POS(jit, reg), sizeof(double));
+		} else {
+			if (dreg != sreg) arm32_vmov_vreg_vreg_double (jit->ip, dreg, sreg);
+		}
+	} else { // passing an immediate value
+		arm32_mov_reg_imm32(jit->ip, ARMREG_R12, &(arg->value.fp));
+		arm32_vldr_size(jit->ip, dreg, ARMREG_R12, 0, sizeof(double));
+	}
+
+	if (!passed_in_reg) arm32_vpush(jit->ip, dreg);
+}
+
+static void emit_pass_fp_arg_float(struct jit *jit, struct jit_scheduled_argument *sched)
+{
+	int index = sched->index;
+	struct jit_out_arg *arg = sched->oarg;
+	int passed_in_reg = sched->passed_in_reg;
+
+	if (arg->isreg) {
+		int sreg;
+		long reg = arg->value.generic;
+		if (is_spilled(reg, jit->prepared_args.op, &sreg)) {
+			arm32_vldr_fp_imm(jit->ip, ARMREG_D15, GET_REG_POS(jit, reg), sizeof(double));
+			sreg = ARMREG_D15;
+		}
+		if (passed_in_reg) arm32_vcvt_dtos_vsreg(jit->ip, index, sreg);
+		else {
+			arm32_vcvt_dtos_vsreg(jit->ip, 31, sreg); // S31
+			abort();
+		}
+	}
+
+	if (!arg->isreg) {
+		float fimm = (float) arg->value.fp;
+		int imm;
+		memcpy(&imm, &fimm, sizeof(float));
+		arm32_mov_reg_imm32(jit->ip, ARMREG_R12, imm);
+		if (passed_in_reg) arm32_vmov_vsreg_reg_float(jit->ip, index, ARMREG_R12); 
+		else arm32_push_reg(jit->ip, ARMREG_R12);
+	}
+}
+
+static void emit_pass_fp_arg(struct jit *jit, struct jit_scheduled_argument *sched)
+{
+	if (sched->oarg->size == sizeof(double)) emit_pass_fp_arg_double(jit, sched);
+	else emit_pass_fp_arg_float(jit, sched);
+}
+
 static int emit_arguments(struct jit *jit)
 {
 	int stack_size = 0;
@@ -458,12 +432,13 @@ static int emit_arguments(struct jit *jit)
 
 	for (int i = arg_cnt - 1; i >= 0; i--) {
 		if (!schedule->arguments[i].passed_in_reg) {
-			if (!schedule->arguments[i].isfp) {
-				emit_pass_gp_arg(jit, &(schedule->arguments[i]));
+			struct jit_scheduled_argument *arg = &(schedule->arguments[i]);
+			if (!arg->isfp) {
+				emit_pass_gp_arg(jit, arg);
 				stack_size += REG_SIZE;
 			} else {
-//				emit_fppush_arg(jit, arg);
-//				stack_size += arg->size;
+				emit_pass_fp_arg(jit, arg);
+				stack_size += arg->oarg->size;
 			}
 		}
 	}
@@ -471,9 +446,8 @@ static int emit_arguments(struct jit *jit)
 	for (int i = 0; i < arg_cnt; i++) {
 		if (schedule->arguments[i].passed_in_reg) {
 			struct jit_scheduled_argument *arg = &(schedule->arguments[i]);
-			struct jit_out_arg *oarg = arg->oarg;
 			if (!arg->isfp) emit_pass_gp_arg(jit, arg);
-			else emit_set_fparg(jit, oarg, arg->index / 2);
+			else emit_pass_fp_arg(jit, arg);
 		}
 	}
 	JIT_FREE(schedule);
@@ -501,7 +475,6 @@ static inline void emit_funcall(struct jit * jit, struct jit_op * op, int imm)
 			}
 		}
 	}
-
 
 	stack_adjustment %= 8;
 
@@ -1445,7 +1418,7 @@ struct jit_reg_allocator * jit_reg_allocator_create()
 	a->fp_regs[12] = (jit_hw_reg) { ARMREG_D12, "D12", 1, 1, 13 };
 	a->fp_regs[13] = (jit_hw_reg) { ARMREG_D13, "D13", 1, 1, 14 };
 	a->fp_regs[14] = (jit_hw_reg) { ARMREG_D14, "D14", 1, 1, 15 };
-	a->fp_regs[15] = (jit_hw_reg) { ARMREG_D15, "D15", 1, 1, 16 };
+	a->fp_regs[15] = (jit_hw_reg) { ARMREG_D15, "D15", 0, 1, 16 }; // D15 is a scratch register used to prepare arguments, thus we don't consider it a calleesaved
 
 
 	a->fp_reg = ARMREG_SP;
