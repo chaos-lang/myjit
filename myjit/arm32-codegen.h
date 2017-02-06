@@ -575,16 +575,7 @@ arm32_emit(ins, \
 
 
 #define arm32_stack_op(ins, _opcode, _imm) \
-	do { \
-		int __immval = _imm; \
-		if (arm32_imm_rotate(__immval) == -1) { \
-			arm32_mov_reg_imm32(ins, ARMREG_R12, __immval); \
-			arm32_alu_reg_reg(ins, _opcode, ARMREG_SP, ARMREG_SP, ARMREG_R12); \
-		} else { \
-			arm32_alu_reg_imm(ins, _opcode, ARMREG_SP, ARMREG_SP, arm32_encode_imm(__immval)); \
-		} \
-	} while (0)
-
+	arm32_alu_reg_imm(ins, _opcode, ARMREG_SP, ARMREG_SP, _imm);
 	
 #define arm32_add_sp_imm(ins, imm)\
 	arm32_stack_op(ins, ARMOP_ADD, (imm))
@@ -766,6 +757,15 @@ arm32_emit(ins, \
 	| B(8, 0xa) \
 	| B(7, (vn & 0x1)) \
 	| B(0,  0x10))
+
+#define arm32_vmov_reg_vsreg_float(ins, rt, vn) arm32_emit_al(ins, \
+	  B(20, 0xe1) \
+	| B(16, (vn & 0x1f) >> 1) \
+	| B(12, rt) \
+	| B(8, 0xa) \
+	| B(7, (vn & 0x1)) \
+	| B(0,  0x10))
+
 
 #define arm32_vmov_vreg_reg_double(ins, rd1, rd2, vn) arm32_emit_al(ins, \
 	  B(20, 0xc5) \

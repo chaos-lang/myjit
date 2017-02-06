@@ -404,7 +404,8 @@ static void emit_pass_fp_arg_float(struct jit *jit, struct jit_scheduled_argumen
 		if (passed_in_reg) arm32_vcvt_dtos_vsreg(jit->ip, index, sreg);
 		else {
 			arm32_vcvt_dtos_vsreg(jit->ip, 31, sreg); // S31
-			abort();
+			arm32_vmov_reg_vsreg_float(jit->ip, ARMREG_R12, 31);
+			arm32_push_reg(jit->ip, ARMREG_R12);
 		}
 	}
 
