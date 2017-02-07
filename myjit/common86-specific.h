@@ -18,6 +18,7 @@
  */
 
 #include "common86-codegen.h"
+#include "util.h"
 
 static inline int is_spilled(jit_value arg_id, jit_op * prepare_op, int * reg);
 static int emit_push_callee_saved_regs(struct jit * jit, jit_op * op);
@@ -79,17 +80,6 @@ static int emit_pop_reg(struct jit * jit, jit_hw_reg * r, int stack_offset)
 		stack_offset += 8;
 	}
 	return stack_offset;
-}
-static int uses_hw_reg(struct jit_op * op, jit_value reg, int fp)
-{
-	if ((GET_OP(op) == JIT_RENAMEREG) && (op->r_arg[0] == reg)) return 1; // not a regular operation
-	for (int i = 0; i < 3; i++)
-		if ((ARG_TYPE(op, i + 1) == REG) || (ARG_TYPE(op, i + 1) == TREG)) {
-			if (fp && (JIT_REG_TYPE(op->arg[i]) == JIT_RTYPE_INT)) continue;
-			if (!fp && (JIT_REG_TYPE(op->arg[i]) == JIT_RTYPE_FLOAT)) continue;
-			if (op->r_arg[i] == reg) return 1;
-		}
-	return 0;
 }
 
 static int emit_push_callee_saved_regs(struct jit * jit, jit_op * op)

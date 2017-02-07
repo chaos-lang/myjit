@@ -145,7 +145,6 @@ static int jit_imm_overflow(struct jit *jit, jit_op *op, long value)
 	return 0;
 #else
 	// XXX: special cases
-	if (GET_OP(op) == JIT_MUL) return 1;
 	if (GET_OP(op) == JIT_HMUL) return 1;
 	if (GET_OP(op) == JIT_SUBC) return 1;
 	if (op->code == (JIT_LD | IMM | SIGNED)) return 1;
@@ -167,11 +166,10 @@ static int jit_imm_overflow(struct jit *jit, jit_op *op, long value)
 	if ((op->code == (JIT_LDX | IMM | SIGNED)) && (op->arg_size == 4) && (arm32_imm_rotate(-value) >= 0)) return 0;
 	if ((op->code == (JIT_STX | IMM)) && (op->arg_size == 4) && (arm32_imm_rotate(-value) >= 0)) return 0;
 
-	if (GET_OP(op) == JIT_MOD) return 1;
+	if ((GET_OP(op) == JIT_MUL) && (value == 0)) return 0;
 	if ((GET_OP(op) == JIT_DIV) || (GET_OP(op) == JIT_MOD) || (GET_OP(op) == JIT_MUL)) {
-		if (IS_IMM(op)) {
-			return !((value == 1) || (value == 2) || (value == 4) || (value == 8) || (value == 16) || (value == 32));
-		} else return 0;
+		if (IS_IMM(op)) return !is_pow2(value);
+		return 0;
 	}
 	return arm32_imm_rotate(value) == -1;
 #endif

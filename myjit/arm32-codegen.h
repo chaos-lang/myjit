@@ -26,6 +26,7 @@
 
 #include <stdint.h>
 
+#define is_pow2(x) ((((x) & (((x) - 1))) == 0) && ((x) != (1 << 31)))
 #define is_imm8(x) (((x) & ~0xff) == 0)
 #define ror(x, shift) ((((unsigned int) (x)) >> (shift)) | ((unsigned int) (x) << (32 - (shift))))
 #define rol(x, shift) ((((unsigned int) (x)) << (shift)) | ((unsigned int) (x) >> (32 - (shift))))
@@ -388,31 +389,26 @@ static inline int arm32_encode_imm(int x)
 	| B(12, reg) \
 	| B(0,  0x4))
 
-#define arm32_pushall(ins) arm32_emit_al(ins, \
-	  B(16, 0x92d) \
-	| B(0,  0x4fff)) 
+#define arm32_push_regs(ins, mask) do { \
+	if (mask == 0) {} \
+	else if (is_pow2(mask)) arm32_push_reg(ins, ffs(mask) - 1); \
+	else arm32_emit_al(ins, B(16, 0x92d) | B(0,  mask)); \
+} while (0)
 
-#define arm32_pushall_but_r0(ins) arm32_emit_al(ins, \
-	  B(16, 0x92d) \
-	| B(0,  0x6ffe)) 
+#define arm32_pop_regs(ins, mask) do {\
+	if (mask == 0) {} \
+	else if (is_pow2(mask)) arm32_pop_reg(ins, ffs(mask) - 1); \
+	else arm32_emit_al(ins, B(16, 0x8bd) | B(0,  mask)); \
+} while (0)
 
-#define arm32_pushall_but_r0123(ins) arm32_emit_al(ins, \
-	  B(16, 0x92d) \
-	| B(0,  0x6ff0)) 
+#define arm32_pushall(ins) arm32_push_regs(ins, 0x4fff)
+#define arm32_pushall_but_r0(ins) arm32_push_regs(ins, 0x6ffe)
+#define arm32_pushall_but_r0123(ins) arm32_push_regs(ins, 0x6ff0)
 
 
-#define arm32_popall(ins) arm32_emit_al(ins, \
-	  B(16, 0x8bd) \
-	| B(0,  0x4fff))
-
-#define arm32_popall_but_r0(ins) arm32_emit_al(ins, \
-	  B(16, 0x8bd) \
-	| B(0,  0x6ffe))
-
-#define arm32_popall_but_r0123(ins) arm32_emit_al(ins, \
-	  B(16, 0x8bd) \
-	| B(0,  0x6ff0))
-
+#define arm32_popall(ins) arm32_pop_regs(ins, 0x4fff)
+#define arm32_popall_but_r0(ins) arm32_pop_regs(ins, 0x6ffe)
+#define arm32_popall_but_r0123(ins) arm32_pop_regs(ins, 0x6ff0)
 
 #define arm32_single_data_transfer(ins, cond, load, regs, byte, rd, rn, op2) \
 	do { \

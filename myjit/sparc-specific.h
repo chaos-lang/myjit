@@ -19,6 +19,7 @@
 
 #include "sparc-codegen.h"
 #include "x86-common-stuff.c"
+#include "util.h"
 
 #define JIT_GET_ADDR(jit, imm) (!jit_is_label(jit, (void *)(imm)) ? (imm) :  \
 		((((long)jit->buf + (long)((jit_label *)(imm))->pos - (long)jit->ip)) / 4))
@@ -386,19 +387,6 @@ void jit_patch_local_addrs(struct jit *jit)
 			*((jit_value *)buf) = (jit_value) (jit->buf + addr);
 		}
 	}
-}
-
-/**
- * computes number of 1's in the given binary number
- * this was taken from the Hacker's Delight book by Henry S. Warren
- */
-static inline int _bit_pop(unsigned int x) {
-	x = (x & 0x55555555) + ((x >> 1) & 0x55555555);
-	x = (x & 0x33333333) + ((x >> 2) & 0x33333333);
-	x = (x & 0x0F0F0F0F) + ((x >> 4) & 0x0F0F0F0F);
-	x = (x & 0x00FF00FF) + ((x >> 8) & 0x00FF00FF);
-	x = (x & 0x0000FFFF) + ((x >>16) & 0x0000FFFF);
-	return x;
 }
 
 /**

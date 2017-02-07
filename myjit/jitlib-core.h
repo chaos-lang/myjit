@@ -135,6 +135,9 @@ struct jit_func_info {			// collection of information related to one function
 	int fp_reg_count;		// total number of FP registers used in the processed function
 	int has_prolog;			// flag indicating if the function has a complete prologue and epilogue
 	struct jit_op *first_op;	// first operation of the function
+#if defined(JIT_ARCH_ARM32)
+	int gp_callee_saved_regs;	// bit mask describing used callee saved registers
+#endif
 };
 
 struct jit {
