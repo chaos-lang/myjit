@@ -375,28 +375,6 @@ static inline int is_spilled(int arg_id, jit_op * prepare_op, int * reg)
 	return 1;
 }
 
-/**
- * Assigns flaoting value to register which is used to pass the argument
- */
-static inline void emit_set_fparg(struct jit *jit, struct jit_out_arg *arg, int index)
-{
-        int sreg;
-        int reg = jit->reg_al->fp_arg_regs[index]->id;
-        jit_value value = arg->value.generic;
-        if (arg->isreg) {
-                if (is_spilled(value, jit->prepared_args.op, &sreg)) {
-                        arm32_vldr_fp_imm(jit->ip, reg, GET_REG_POS(jit, value), sizeof(double));
-                } else {
-                        if (reg != sreg) arm32_vmov_vreg_vreg_double(jit->ip, reg, sreg);
-                }
-        } else {
-		arm32_mov_reg_imm32(jit->ip, ARMREG_R12, &arg->value.fp);
-		arm32_vldr_size(jit->ip, reg, ARMREG_R12, 0, sizeof(double));
-	}
-}
-
-
-
 static void emit_pass_gp_arg(struct jit *jit, struct jit_scheduled_argument *sched)
 {
 	int index = sched->index;
