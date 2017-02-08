@@ -223,6 +223,32 @@ DEFINE_TEST(test20)
 	return 0;
 }
 
+DEFINE_TEST(test21)
+{
+	plfv f1;
+	jit_prolog(p, &f1);
+	jit_movi(p, R(0), 0xcafe);
+	jit_muli(p, R(0), R(0), 1);
+	
+	jit_retr(p, R(0));
+	JIT_GENERATE_CODE(p);
+	ASSERT_EQ(0xcafe, f1());
+	return 0;
+}
+
+DEFINE_TEST(test22)
+{
+	plfv f1;
+	jit_prolog(p, &f1);
+	jit_movi(p, R(0), 0xcafe);
+	jit_muli(p, R(0), R(0), 0);
+	
+	jit_retr(p, R(0));
+	JIT_GENERATE_CODE(p);
+	ASSERT_EQ(0x0, f1());
+	return 0;
+}
+
 void test_setup()
 {
 	test_filename = __FILE__;
@@ -243,4 +269,6 @@ void test_setup()
 	SETUP_TEST(test16);
 
 	SETUP_TEST(test20);
+	SETUP_TEST(test21);
+	SETUP_TEST(test22);
 }

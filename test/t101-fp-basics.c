@@ -217,7 +217,78 @@ DEFINE_TEST(test21)
 	return 0;
 }
 
+DEFINE_TEST(test30)
+{
+	static float x = 1.1;
+	static double y = 2.3;
 
+	plfv f1;
+	jit_prolog(p, &f1);
+	jit_fldi(p, FR(0), &x, sizeof(float));
+	jit_fldi(p, FR(1), &y, sizeof(double));
+
+	jit_faddi(p, FR(0), FR(0), 10.10);
+	jit_faddi(p, FR(1), FR(1), 20.20);
+	
+	jit_fsti(p, &x, FR(0), sizeof(float));
+	jit_fsti(p, &y, FR(1), sizeof(double));
+	
+	jit_reti(p, 666);
+	JIT_GENERATE_CODE(p);
+
+	ASSERT_EQ_DOUBLE(666, f1());
+	ASSERT_EQ_DOUBLE(11.20, x);
+	ASSERT_EQ_DOUBLE(22.50, y);
+	return 0;
+}
+
+DEFINE_TEST(test31)
+{
+	static double x[] = {1.1, 2.2, 3.3, 4.4};
+
+	plfv f1;
+	jit_prolog(p, &f1);
+	jit_movi(p, R(0), 8);
+	jit_fldxi(p, FR(0), R(0), &x, sizeof(double));
+
+	jit_faddi(p, FR(0), FR(0), 10.10);
+	
+	jit_fstxi(p, &x, R(0), FR(0), sizeof(double));
+	
+	jit_reti(p, 666);
+	JIT_GENERATE_CODE(p);
+
+	ASSERT_EQ_DOUBLE(666, f1());
+	ASSERT_EQ_DOUBLE(1.1, x[0]);
+	ASSERT_EQ_DOUBLE(12.3, x[1]);
+	ASSERT_EQ_DOUBLE(3.3, x[2]);
+	ASSERT_EQ_DOUBLE(4.4, x[3]);
+	return 0;
+}
+
+DEFINE_TEST(test32)
+{
+	static float x[] = {1.1, 2.2, 3.3, 4.4};
+
+	plfv f1;
+	jit_prolog(p, &f1);
+	jit_movi(p, R(0), 4);
+	jit_fldxi(p, FR(0), R(0), &x, sizeof(float));
+
+	jit_faddi(p, FR(0), FR(0), 10.10);
+	
+	jit_fstxi(p, &x, R(0), FR(0), sizeof(float));
+	
+	jit_reti(p, 666);
+	JIT_GENERATE_CODE(p);
+
+	ASSERT_EQ_DOUBLE(666, f1());
+	ASSERT_EQ_DOUBLE(1.1, x[0]);
+	ASSERT_EQ_DOUBLE(12.3, x[1]);
+	ASSERT_EQ_DOUBLE(3.3, x[2]);
+	ASSERT_EQ_DOUBLE(4.4, x[3]);
+	return 0;
+}
 
 
 void test_setup() 
@@ -237,4 +308,8 @@ void test_setup()
 
 	SETUP_TEST(test20);
 	SETUP_TEST(test21);
+
+	SETUP_TEST(test30);
+	SETUP_TEST(test31);
+	SETUP_TEST(test32);
 }

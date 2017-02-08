@@ -1261,7 +1261,7 @@ op_complete:
 			break;
 
 		case (JIT_FLD | IMM):
-			arm32_mov_reg_imm32(jit->ip, ARMREG_R12, a2);
+			arm32_mov_reg_imm32(jit->ip, ARMREG_R12, op->arg[1]);
 			arm32_vldr_size(jit->ip, a1, ARMREG_R12, 0, op->arg_size);
 			break;
 
@@ -1291,13 +1291,13 @@ op_complete:
 			break;
 
 		case (JIT_FST | IMM):
-			arm32_mov_reg_imm32(jit->ip, ARMREG_R12, a2);
-			if (op->arg_size == sizeof(double)) arm32_vstr_size(jit->ip, a1, ARMREG_R12, 0, op->arg_size);
+			arm32_mov_reg_imm32(jit->ip, ARMREG_R12, op->arg[0]);
+			if (op->arg_size == sizeof(double)) arm32_vstr_size(jit->ip, a2, ARMREG_R12, 0, op->arg_size);
 			else {
 				int in_use = jit_reg_in_use(op, a2, 1);
 				if (in_use) arm32_vpush(jit->ip, a2);
 				arm32_vcvt_dtos(jit->ip, a2, a2);
-				arm32_vstr_size(jit->ip, a1, ARMREG_R12, 0, op->arg_size);
+				arm32_vstr_size(jit->ip, a2, ARMREG_R12, 0, op->arg_size);
 				if (in_use) arm32_vpop(jit->ip, a2);
 			}
 			break;

@@ -657,11 +657,11 @@ arm32_emit(ins, \
 		arm32_emit_al(ins,\
 			  B(28, cond) \
 			| B(24, 0xd) \
-			| B(23, __val >= 0) /* UP => rn + rm */ \
+			| B(23, (__val >= 0) & 0x1) /* UP => rn + rm */ \
 			| B(22, 0) /* double */ \
-			| B(20, load) \
-			| B(16, rn) \
-			| B(12, vd) \
+			| B(20, (load) & 0x1) \
+			| B(16, (rn) & 0xf) \
+			| B(12, (vd) & 0xf) \
 			| B(9,  0x5) \
 			| B(8,  ((flt) ? 0x0: 0x1)) \
 			| B(0,  __absval & 0xff)); \
