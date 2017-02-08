@@ -124,6 +124,26 @@ static void arm32d_out_reg(arm32d_t *dis, int reg)
 	strcat(dis->out, regs[reg]);
 }
 
+static void arm32d_out_dreg(arm32d_t *dis, int reg)
+{
+	static char *regs[] = {
+		"d0", "d1", "d2", "d3", "d4", "d5", "d6", "d7",
+		"d8", "d9", "d10", "d11", "d12", "d13", "d14", "d15" };
+
+	strcat(dis->out, regs[reg]);
+}
+
+static void arm32d_out_sreg(arm32d_t *dis, int reg)
+{
+	static char *regs[] = {
+		"s0", "s1", "s2", "s3", "s4", "s5", "s6", "s7", "s8", "s9", "s10", 
+		"s10", "s11", "s12", "s13", "s14", "s15", "s16", "s17", "s18", "s19", "s20", 
+		"s20", "s21", "s22", "s23", "s24", "s25", "s26", "s27", "s28", "s29", "s30",
+		"s31" };
+
+	strcat(dis->out, regs[reg]);
+}
+
 static void arm32d_out_shift(arm32d_t *dis, int shift)
 {
 	if (B(shift, 0, 1) || (B(shift, 3, 5))) {
@@ -371,6 +391,196 @@ static void decode_divmul(arm32d_t *dis, uint32_t insn, char *name)
 	arm32d_out_reg(dis, B(insn, 8, 4));
 }
 
+
+static void decode_vop_unary(arm32d_t *dis, uint32_t insn)
+{
+	int op1 = B(insn, 16, 4);
+	int op2 = B(insn, 4, 4);
+
+	if ((op1 == 0x1) && (op2 == 0x4)) arm32d_out_name_s(dis, insn, "vneg", ".f64");
+	if ((op1 == 0x0) && (op2 == 0xc)) arm32d_out_name_s(dis, insn, "vabs", ".f64");
+	if ((op1 == 0x5) && (op2 == 0xc)) arm32d_out_name_s(dis, insn, "vcmp", ".f64");
+	if ((op1 == 0x4) && (op2 == 0xc)) arm32d_out_name_s(dis, insn, "vcmp", ".f64");
+	if ((op1 == 0x0) && (op2 == 0x4)) arm32d_out_name_s(dis, insn, "vmov", ".f64");
+
+	arm32d_out_dreg(dis, B(insn, 12, 4));
+	arm32d_out_comma(dis);
+	if ((op1 == 0x5) && (op2 == 0xc)) {
+		arm32d_out_imm(dis, 0);
+	} else {
+		arm32d_out_dreg(dis, B(insn, 0, 4));
+	}
+
+}
+
+static void decode_vop_binary(arm32d_t *dis, uint32_t insn)
+{
+	int op1 = B(insn, 20, 4);
+	int op2 = B(insn, 4, 4);
+	if ((op1 == 0x3) && (op2 == 0x0)) arm32d_out_name_s(dis, insn, "vadd", ".f64");
+	if ((op1 == 0x3) && (op2 == 0x4)) arm32d_out_name_s(dis, insn, "vsub", ".f64");
+	if ((op1 == 0x2) && (op2 == 0x0)) arm32d_out_name_s(dis, insn, "vmul", ".f64");
+	if ((op1 == 0x8) && (op2 == 0x0)) arm32d_out_name_s(dis, insn, "vdiv", ".f64");
+
+	arm32d_out_dreg(dis, B(insn, 12, 4));
+	arm32d_out_comma(dis);
+	arm32d_out_dreg(dis, B(insn, 16, 4));
+	arm32d_out_comma(dis);
+	arm32d_out_dreg(dis, B(insn, 0, 4));
+}
+
+static void decode_vstack(arm32d_t *dis, uint32_t insn, char *name)
+{
+	arm32d_out_name(dis, insn, name);
+	arm32d_out_dreg(dis, B(insn, 12, 4));
+}
+
+static void decode_vfp_fpscr(arm32d_t *dis, uint32_t insn)
+{
+	int read = B(insn, 20, 1);
+	int reg = B(insn, 12, 4);
+	if (read) {
+		arm32d_out_name(dis, insn, "vmrs");
+		if (reg == 0xf) arm32d_out_printf(dis->out, "APSR");
+		else arm32d_out_reg(dis, reg);
+		arm32d_out_comma(dis);
+		arm32d_out_printf(dis->out, "fpscr");
+	} else {
+		arm32d_out_name(dis, insn, "vmsr");
+		arm32d_out_printf(dis->out, "fpscr");
+		arm32d_out_comma(dis);
+		if (reg == 0xf) arm32d_out_printf(dis->out, "APSR");
+		else arm32d_out_reg(dis, reg);
+	}
+}
+
+static void decode_vfp_data_transfer(arm32d_t *dis, uint32_t insn)
+{
+	int up   = B(insn, 23, 1);
+	int d    = B(insn, 22, 1);
+	int load = B(insn, 20, 1);
+	int rn   = B(insn, 16, 4);
+	int vd   = B(insn, 12, 4);
+	int dbl  = B(insn, 8, 1);
+	int imm  = B(insn, 0, 8);
+
+	imm = imm * 4;
+	if (!up) imm -= imm;
+
+	if (load) arm32d_out_name(dis, insn, "vldr");
+	else arm32d_out_name(dis, insn, "vstr");
+
+	if (dbl) arm32d_out_dreg(dis, vd);
+	else arm32d_out_sreg(dis, (vd << 1) + d);
+	arm32d_out_comma(dis);
+
+	arm32d_out_printf(dis->out, "[");
+	arm32d_out_reg(dis, rn);
+
+	if (imm) {
+		arm32d_out_printf(dis->out, " %s ", up ? "+" : "-");
+		arm32d_out_printf(dis->out, "0x%x", imm);
+	}
+	arm32d_out_printf(dis->out, "]");
+}
+
+
+static void decode_vcvt(arm32d_t *dis, uint32_t insn)
+{
+	int d    = B(insn, 22, 1);
+	int opc2 = B(insn, 16, 3);
+	int vd   = B(insn, 12, 4);
+	int sz   = B(insn, 8, 1);
+	int op   = B(insn, 7, 1);
+	int m    = B(insn, 5, 1);
+	int vm   = B(insn, 0, 4);
+	int to_integer = B(opc2, 2, 1);
+
+	int dd, mm;
+	if (to_integer) {
+		dd = (vd << 1) | d;
+		mm = sz ? ((m << 4) | vm) : ((vm << 1) | m);
+	} else {
+		mm = ((vm << 1) | m);
+		dd = sz ? vd : ((vd << 1) | d);
+	}
+
+	char *name, *suffix = "???";
+	if ((opc2 != 0x0) && op) name = "vcvt";
+	else name = "vctvr";
+
+	if ((opc2 == 0x5) && (sz == 1)) suffix = ".s32.f64";
+	if ((opc2 == 0x5) && (sz == 0)) suffix = ".s32.f32";
+	if ((opc2 == 0x4) && (sz == 1)) suffix = ".u32.f64";
+	if ((opc2 == 0x4) && (sz == 0)) suffix = ".u32.f32";
+	if ((opc2 == 0x0) && (sz == 1) && (op == 0)) suffix = ".f64.s32";
+	if ((opc2 == 0x0) && (sz == 1) && (op == 1)) suffix = ".f64.u32";
+	if ((opc2 == 0x0) && (sz == 0) && (op == 0)) suffix = ".f32.s32";
+	if ((opc2 == 0x0) && (sz == 0) && (op == 1)) suffix = ".f32.u32";
+
+	arm32d_out_name_s(dis, insn, name, suffix);
+
+	if ((opc2 == 0x0) && (sz == 1)) arm32d_out_dreg(dis, dd);
+	else arm32d_out_sreg(dis, dd);
+
+	arm32d_out_comma(dis);
+
+	if ((sz == 0) || (opc2 == 0)) arm32d_out_sreg(dis, mm);
+	else arm32d_out_dreg(dis, mm);
+}
+
+static void decode_vcvtff(arm32d_t *dis, uint32_t insn)
+{
+	int vd   = B(insn, 12, 4);
+	int sz   = B(insn, 8, 1);
+	int m    = B(insn, 5, 1);
+	int vm   = B(insn, 0, 4);
+
+	char *suffix = (sz ? ".f32.f64" : ".f64.f32");
+	arm32d_out_name_s(dis, insn, "vcvt", suffix);
+
+	int dd = (sz ? vd << 1 : vd);
+	int mm = (sz ? ((m << 4) | vm) : ((vm << 1) | m));
+	if (sz) {
+		arm32d_out_sreg(dis, dd);
+		arm32d_out_comma(dis);
+		arm32d_out_dreg(dis, mm);
+	} else {
+		arm32d_out_dreg(dis, dd);
+		arm32d_out_comma(dis);
+		arm32d_out_sreg(dis, mm);
+	}
+}
+
+
+static void decode_vmov_float_reg(arm32d_t *dis, uint32_t insn)
+{
+	arm32d_out_name(dis, insn, "vmov");
+	if (B(insn, 20, 1)) {
+		arm32d_out_reg(dis, B(insn, 12, 4));
+		arm32d_out_comma(dis);
+		arm32d_out_sreg(dis, B(insn, 16, 4) << 1);
+	} else {
+		arm32d_out_sreg(dis, B(insn, 16, 4) << 1);
+		arm32d_out_comma(dis);
+		arm32d_out_reg(dis, B(insn, 12, 4));
+	}
+}
+
+static void decode_vmov_sreg_reg(arm32d_t *dis, uint32_t insn)
+{
+	arm32d_out_name(dis, insn, "vmov.32");
+	if (B(insn, 20, 1)) {
+		arm32d_out_reg(dis, B(insn, 12, 4));
+		arm32d_out_comma(dis);
+		arm32d_out_sreg(dis, B(insn, 16, 4) << 1);
+	} else {
+		arm32d_out_sreg(dis, B(insn, 16, 4) << 1);
+		arm32d_out_comma(dis);
+		arm32d_out_reg(dis, B(insn, 12, 4));
+	}
+}
+
 static void decode(arm32d_t *dis, uint32_t insn)
 {
 	if (B(insn, 20, 8) == 0x30) decode_mov16(dis, insn, "movw");
@@ -387,6 +597,16 @@ static void decode(arm32d_t *dis, uint32_t insn)
 	else if (B(insn, 4, 24) == 0x12fff3) decode_bx(dis, insn, 1);
 	else if (B(insn, 26, 2) == 0x1) decode_single_data_transfer(dis, insn);
 	else if (B(insn, 25, 3) == 0x0) decode_dataop_reg(dis, insn);
+	else if ((B(insn, 21, 7) == 0x70) && (B(insn, 0, 12) == 0xa10)) decode_vmov_float_reg(dis, insn);
+	else if ((B(insn, 21, 7) == 0x70) && (B(insn, 8, 4) == 0xb) && (B(insn, 0, 8) == 0x10)) decode_vmov_sreg_reg(dis, insn);
+	else if ((B(insn, 16, 12) == 0xd2d) && (B(insn, 8, 4) == 0xb) && (B(insn, 0, 8) == 0x2)) decode_vstack(dis, insn, "vpush"); 
+	else if ((B(insn, 16, 12) == 0xcbd) && (B(insn, 8, 4) == 0xb) && (B(insn, 0, 8) == 0x2)) decode_vstack(dis, insn, "vpop"); 
+	else if ((B(insn, 23, 5) == 0x1d) && (B(insn, 19, 3) == 0x7) && (B(insn, 9, 3) == 0x5) && (B(insn, 6, 1))) decode_vcvt(dis, insn);
+	else if ((B(insn, 16, 12) == 0xeb7) && (B(insn, 9, 3) == 0x5) && (B(insn, 4, 4) == 0xc)) decode_vcvtff(dis, insn);
+	else if ((B(insn, 24, 4)) == 0xd) decode_vfp_data_transfer(dis, insn);
+	else if ((B(insn, 20, 8) == 0xeb) && (B(insn, 8, 4) == 0xb)) decode_vop_unary(dis, insn);
+	else if ((B(insn, 21, 7) == 0x77) && (B(insn, 16, 1) == 0x1) && (B(insn, 0, 12) == 0xa10)) decode_vfp_fpscr(dis, insn);
+	else if ((B(insn, 24, 4) == 0xe) && (B(insn, 8, 4) == 0xb)) decode_vop_binary(dis, insn);
 	else arm32d_out_printf(dis->out, "");
 }
 
