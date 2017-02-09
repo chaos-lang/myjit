@@ -762,63 +762,31 @@ arm32_emit(ins, \
 	| B(7, (vn & 0x1)) \
 	| B(0,  0x10))
 
-
-#define arm32_vmov_vreg_reg_double(ins, rd1, rd2, vn) arm32_emit_al(ins, \
-	  B(20, 0xc5) \
-	| B(16, rd2) \
-	| B(12, rd1) \
-	| B(4,  0xa1) \
-	| B(0, vn))
-
-#define arm32_vadd_double(ins, vd, vn, vm) arm32_emit_al(ins, \
-	  B(22, 0x38) \
-	| B(20, 0x3) \
+#define arm32_vop_double(ins, op1, op2, vd, vn, vm) arm32_emit_al(ins, \
+	  B(24, 0xe) \
+	| B(20, op1) \
 	| B(16, vn) \
 	| B(12, vd) \
-	| B(9,  0x5) \
-	| B(8, 1) /* double */ \
+	| B(8,  0xb) \
+	| B(4,  op2) \
 	| B(0, vm))
 
-#define arm32_vsub_double(ins, vd, vn, vm) arm32_emit_al(ins, \
-	  B(22, 0x38) \
-	| B(20, 0x3) \
-	| B(16, vn) \
-	| B(12, vd) \
-	| B(9,  0x5) \
-	| B(8,  1) /* double */ \
-	| B(4,  0x4) \
-	| B(0,  vm))
-
-#define arm32_vmul_double(ins, vd, vn, vm) arm32_emit_al(ins, \
-	  B(22, 0x38) \
-	| B(20, 0x2) \
-	| B(16, vn) \
-	| B(12, vd) \
-	| B(9,  0x5) \
-	| B(8,  1) /* double */ \
-	| B(4,  0x0) \
-	| B(0,  vm))
-
-#define arm32_vdiv_double(ins, vd, vn, vm) arm32_emit_al(ins, \
-	  B(22, 0x3a) \
-	| B(20, 0x0) \
-	| B(16, vn) \
-	| B(12, vd) \
-	| B(9,  0x5) \
-	| B(8,  1) /* double */ \
-	| B(4,  0x0) \
-	| B(0,  vm))
+#define arm32_vadd_double(ins, vd, vn, vm) arm32_vop_double(ins, 0x3, 0x0, vd, vn, vm)
+#define arm32_vsub_double(ins, vd, vn, vm) arm32_vop_double(ins, 0x3, 0x4, vd, vn, vm)
+#define arm32_vmul_double(ins, vd, vn, vm) arm32_vop_double(ins, 0x2, 0x0, vd, vn, vm)
+#define arm32_vdiv_double(ins, vd, vn, vm) arm32_vop_double(ins, 0x8, 0x0, vd, vn, vm)
 
 #define arm32_vneg_double(ins, vd, vm) arm32_emit_al(ins, \
-	  B(22, 0x3a) \
-	| B(20, 0x3) \
-	| B(16, 0x1) \
+	  B(16, 0xeb1) \
 	| B(12, vd) \
-	| B(9,  0x5) \
-	| B(8,  1) /* double */ \
-	| B(4,  0x4) \
-	| B(0,  vm))
+	| B(4, 0xb4) \
+	| B(0, vm))
 
+#define arm32_vabs(ins, vd, vm) arm32_emit_al(ins, \
+	  B(16, 0xeb0) \
+	| B(12, vd) \
+	| B(4,  0xbc) \
+	| B(0,  vm))
 
 #define arm32_vfp_cmp_double(ins, vd, vm, zero) arm32_emit_al(ins, \
 	  B(20, 0xeb) \
@@ -829,13 +797,6 @@ arm32_emit(ins, \
 
 #define arm32_vcmp_double(ins, vd, vm) arm32_vfp_cmp_double(ins, vd, vm, 0)
 #define arm32_vcmp0_double(ins, vd) arm32_vfp_cmp_double(ins, vd, 0, 1)
-
-#define arm32_vmrs_flags(ins) arm32_emit_al(ins, \
-	  B(20, 0xef) \
-	| B(16, 0x1) /* FPSCR */ \
-	| B(12, 0xf) /* APSR */ \
-	| B(0,  0xa10))
-	
 
 #define arm32_vpush(ins, vd) arm32_emit_al(ins, \
 	  B(16, 0xd2d) \
@@ -858,9 +819,4 @@ arm32_emit(ins, \
 
 #define arm32_vmsr(ins, rn) arm32_vfp_fpscr(ins, 0, rn)
 #define arm32_vmrs(ins, rd) arm32_vfp_fpscr(ins, 1, rd)
-
-#define arm32_vabs(ins, vd, vm) arm32_emit_al(ins, \
-	  B(16, 0xeb0) \
-	| B(12, vd) \
-	| B(4,  0xbc) \
-	| B(0,  vm))
+#define arm32_vmrs_flags(ins) arm32_vfp_fpscr(ins, 1, 0xf)
