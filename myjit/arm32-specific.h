@@ -78,7 +78,10 @@ static inline int GET_ARG_SPILL_POS(struct jit *jit, struct jit_func_info *info,
 
 static inline int GET_FPARG_SPILL_POS(struct jit *jit, struct jit_func_info *info, int arg)
 {
-	return - (MAX(0, info->general_arg_cnt - jit->reg_al->gp_arg_reg_cnt)) * REG_SIZE - (arg + 1) * sizeof(double) - jit_current_func_info(jit)->allocai_mem;
+	return - (MAX(0, info->general_arg_cnt - jit->reg_al->gp_arg_reg_cnt)) * REG_SIZE 
+		- (info->gp_reg_count * REG_SIZE)
+		- (arg + 1) * sizeof(double) 
+		- jit_current_func_info(jit)->allocai_mem;
 }
 
 int jit_allocai(struct jit * jit, int size)
@@ -217,9 +220,8 @@ void jit_init_arg_params(struct jit *jit, struct jit_func_info *info, int p, int
 	}
 
 	if (a->size == sizeof(float)) {
-		// float values passed in registers are moved to stack in the prologue
-		a->passed_by_reg = 0;
 		a->location.reg = sa->index;
+		// float values passed in registers are moved to stack in the prologue
 		a->spill_pos = GET_FPARG_SPILL_POS(jit, info, a->fp_pos);
 	}
 free_schedule:
@@ -277,7 +279,7 @@ static void emit_prolog(struct jit *jit, struct jit_op *op)
 	// saves single precision values on stack
 	for (int i = 0; i < info->general_arg_cnt + info->float_arg_cnt; i++) {
 		struct jit_inp_arg a = info->args[i];
-		if ((a.type == JIT_FLOAT_NUM) && (a.size == sizeof(float))) {
+		if ((a.type == JIT_FLOAT_NUM) && (a.size == sizeof(float)) && a.passed_by_reg) {
 			arm32_vstr_float_fp_imm(jit->ip, a.location.reg, a.spill_pos);
 		}
 	}
@@ -906,7 +908,7 @@ static inline void emit_ureg(struct jit *jit, long vreg, long hreg_id)
 		} else {
 			int arg_id = JIT_REG_ID(vreg);
 			struct jit_inp_arg *a = &(jit_current_func_info(jit)->args[arg_id]);
-			if (a->passed_by_reg) arm32_vstr_fp_imm(jit->ip, hreg_id, a->spill_pos, sizeof(double));
+			if (a->passed_by_reg) arm32_vstr_fp_imm(jit->ip, hreg_id, GET_REG_POS(jit, vreg), sizeof(double));
 		} 
 	}
 	if (JIT_REG_SPEC(vreg)== JIT_RTYPE_REG) {
@@ -976,22 +978,32 @@ void jit_gen_op(struct jit * jit, struct jit_op * op)
 			arm32_hmul(jit->ip, a1, a2, a3);
 			break;
 		case JIT_DIV: 
-			if (IS_IMM(op)) {
-				arm32_rsa_imm(jit->ip, a1, a2, ffs(a3) - 1);
-				goto op_complete;
-			} 
-			else arm32_sdiv(jit->ip, a1, a2, a3);
+			if (IS_SIGNED(op)) {
+				if (IS_IMM(op)) {
+					arm32_rsa_imm(jit->ip, a1, a2, ffs(a3) - 1);
+					goto op_complete;
+				}  else arm32_sdiv(jit->ip, a1, a2, a3);
+			} else {
+				if (IS_IMM(op)) {
+					arm32_rsh_imm(jit->ip, a1, a2, ffs(a3) - 1);
+					goto op_complete;
+				}  else arm32_udiv(jit->ip, a1, a2, a3);
+			}
 			break;
 		case JIT_MOD: 
-			if (IS_IMM(op)) {
-				arm32_and_reg_imm(jit->ip, a1, a2, (1 << (ffs(a3) - 1)) - 1);
-				goto op_complete;
+			if (IS_SIGNED(op)) {
+				if (IS_IMM(op)) {
+					arm32_and_reg_imm(jit->ip, a1, a2, (1 << (ffs(a3) - 1)) - 1);
+					goto op_complete;
+				}
+				arm32_sdiv(jit->ip, ARMREG_R12, a2, a3);
+				arm32_mul(jit->ip, ARMREG_R12, a3, ARMREG_R12);
+				arm32_sub_reg_reg(jit->ip, a1, a2, ARMREG_R12);
+			} else {
+				arm32_udiv(jit->ip, ARMREG_R12, a2, a3);
+				arm32_mul(jit->ip, ARMREG_R12, a3, ARMREG_R12);
+				arm32_sub_reg_reg(jit->ip, a1, a2, ARMREG_R12);
 			}
-
-			arm32_sdiv(jit->ip, ARMREG_R12, a2, a3);
-			arm32_mul(jit->ip, ARMREG_R12, a3, ARMREG_R12);
-			arm32_sub_reg_reg(jit->ip, a1, a2, ARMREG_R12);
-
 			break;
 
 		case JIT_LT: emit_cond_op(jit, op, IS_SIGNED(op) ? ARMCOND_LT : ARMCOND_CC, IS_IMM(op)); break;

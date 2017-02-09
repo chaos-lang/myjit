@@ -170,7 +170,11 @@ static int jit_imm_overflow(struct jit *jit, jit_op *op, long value)
 	if (GET_OP(op) == JIT_FSTX) return 0;
 
 	if ((GET_OP(op) == JIT_MUL) && (value == 0)) return 0;
-	if ((GET_OP(op) == JIT_DIV) || (GET_OP(op) == JIT_MOD) || (GET_OP(op) == JIT_MUL)) {
+	if (GET_OP(op) == JIT_MOD) {
+		if ((op->code == (JIT_MOD | IMM | SIGNED)) && is_pow2(value)) return 0;
+		return 1;
+	}
+	if ((GET_OP(op) == JIT_DIV) || (GET_OP(op) == JIT_MUL)) {
 		if (IS_IMM(op)) return !is_pow2(value);
 		return 0;
 	}
@@ -230,6 +234,7 @@ static inline void jit_correct_float_imms(struct jit * jit)
 		if (GET_OP(op) == JIT_FLDX) continue;
 		if (GET_OP(op) == JIT_FST) continue;
 		if (GET_OP(op) == JIT_FSTX) continue;
+		if (is_cond_branch_op(op) && IS_IMM(op) && (op->flt_imm == 0.0)) continue;
 // FIXME: TODO		if (GET_OP(op) == JIT_FMSG) continue;
 		int imm_arg;
 		for (int i = 1; i < 4; i++)
