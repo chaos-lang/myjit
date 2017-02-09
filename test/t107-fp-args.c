@@ -2,6 +2,11 @@
 
 typedef double (* pdf10f)(float, float, float, float, float, float, float, float, float, float);
 typedef double (* pdf10d)(double, double, double, double, double, double, double, double, double, double);
+typedef double (* pdf30ifd)(int, float, double, int, float, double,
+                            int, float, double, int, float, double,
+                            int, float, double, int, float, double,
+                            int, float, double, int, float, double,
+                            int, float, double, int, float, double);
 
 DEFINE_TEST(test1)
 {
@@ -120,9 +125,95 @@ DEFINE_TEST(test2)
 	return 0;
 }
 
+DEFINE_TEST(test3)
+{
+	pdf30ifd foo;
+	jit_prolog(p, &foo);
+
+	for (int i = 0; i < 10; i++) {
+		jit_declare_arg(p, JIT_SIGNED_NUM, sizeof(int));
+		jit_declare_arg(p, JIT_FLOAT_NUM, sizeof(float));
+		jit_declare_arg(p, JIT_FLOAT_NUM, sizeof(double));
+	}
+
+	for (int i = 0; i < 10; i++) {
+		jit_getarg(p, R(i + 1), i * 3);
+		jit_getarg(p, FR(i + 1), i * 3 + 1);
+		jit_getarg(p, FR(i + 1 + 10), i * 3 + 2);
+	}
+
+	jit_movi(p, R(0), 0);
+	jit_fmovi(p, FR(0), 0);
+
+	for (int i = 0; i < 10; i++)
+		jit_addr(p, R(0), R(0), R(i + 1));
+
+	for (int i = 0; i < 10; i++) {
+		jit_faddr(p, FR(0), FR(0), FR(i + 1));
+		jit_faddr(p, FR(0), FR(0), FR(i + 1 + 10));
+	}
+
+	jit_extr(p, FR(1), R(0));
+	jit_faddr(p, FR(0), FR(0), FR(1));
+
+	jit_fretr(p, FR(0), sizeof(double));
+
+	JIT_GENERATE_CODE(p);
+	ASSERT_EQ_DOUBLE(465, foo(1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18, 19, 20, 21, 22, 23, 24, 25, 26, 27, 28, 29, 30));
+	return 0;
+}
+
+DEFINE_TEST(test4)
+{
+	pdf30ifd foo;
+	jit_prolog(p, &foo);
+
+	for (int i = 0; i < 10; i++) {
+		jit_declare_arg(p, JIT_SIGNED_NUM, sizeof(int));
+		jit_declare_arg(p, JIT_FLOAT_NUM, sizeof(float));
+		jit_declare_arg(p, JIT_FLOAT_NUM, sizeof(double));
+	}
+
+
+	// FORCE
+	jit_full_spill(p);
+
+	for (int i = 0; i < 10; i++) {
+		jit_getarg(p, R(i + 1), i * 3);
+		jit_getarg(p, FR(i + 1), i * 3 + 1);
+		jit_getarg(p, FR(i + 1 + 10), i * 3 + 2);
+	}
+
+	jit_movi(p, R(0), 0);
+	jit_fmovi(p, FR(0), 0);
+
+	// FORCE
+	jit_full_spill(p);
+
+	for (int i = 0; i < 10; i++)
+		jit_addr(p, R(0), R(0), R(i + 1));
+
+	for (int i = 0; i < 10; i++) {
+		jit_faddr(p, FR(0), FR(0), FR(i + 1));
+		jit_faddr(p, FR(0), FR(0), FR(i + 1 + 10));
+	}
+
+	jit_extr(p, FR(1), R(0));
+	jit_faddr(p, FR(0), FR(0), FR(1));
+	
+
+	jit_fretr(p, FR(0), sizeof(double));
+
+	JIT_GENERATE_CODE(p);
+	ASSERT_EQ_DOUBLE(465, foo(1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18, 19, 20, 21, 22, 23, 24, 25, 26, 27, 28, 29, 30));
+	return 0;
+}
+
 void test_setup()
 {
 	test_filename = __FILE__;
 	SETUP_TEST(test1);
 	SETUP_TEST(test2);
+	SETUP_TEST(test3);
+	SETUP_TEST(test4);
 }

@@ -222,6 +222,43 @@ TEST_UNARY_REG_SAME_REG(test162, jit_notr, 42, ~42)
 TEST_UNARY_REG_OTHER_REG(test163, jit_notr, 42, ~42)
 
 
+TEST_IMM_SAME_REG(test260, jit_divi_u, -42UL, 4UL, -42UL / 4UL)
+TEST_IMM_OTHER_REG(test261, jit_divi_u, -42UL, 4UL, -42UL / 4UL)
+TEST_REG_SAME_REG(test262, jit_divr_u, -42UL, 4UL, -42UL / 4UL)
+TEST_REG_OTHER_REG(test263, jit_divr_u, -42UL, 4UL, -42UL / 4UL)
+
+TEST_IMM_SAME_REG(test264, jit_divi_u, -42UL, 9UL, -42UL / 9UL)
+TEST_IMM_OTHER_REG(test265, jit_divi_u, -42UL, 9UL, -42UL / 9UL)
+TEST_REG_SAME_REG(test266, jit_divr_u, -42UL, 9UL, -42UL / 9UL)
+TEST_REG_OTHER_REG(test267, jit_divr_u, -42UL, 9UL, -42UL / 9UL)
+
+TEST_IMM_SAME_REG(test270, jit_modi_u, -42UL, 4UL, -42UL % 4UL)
+TEST_IMM_OTHER_REG(test271, jit_modi_u, -42UL, 4UL, -42UL % 4UL)
+TEST_REG_SAME_REG(test272, jit_modr_u, -42UL, 4UL, -42UL % 4UL)
+TEST_REG_OTHER_REG(test273, jit_modr_u, -42UL, 4UL, -42UL % 4UL)
+
+TEST_IMM_SAME_REG(test274, jit_modi_u, -42UL, 9UL, -42UL % 9UL)
+TEST_IMM_OTHER_REG(test275, jit_modi_u, -42UL, 9UL, -42UL % 9UL)
+TEST_REG_SAME_REG(test276, jit_modr_u, -42UL, 9UL, -42UL % 9UL)
+TEST_REG_OTHER_REG(test277, jit_modr_u, -42UL, 9UL, -42UL % 9UL)
+
+TEST_IMM_SAME_REG(test280, jit_modi_u, -42UL, -9UL, -42UL % -9UL)
+TEST_IMM_OTHER_REG(test281, jit_modi_u, -42UL, -9UL, -42UL % -9UL)
+TEST_REG_SAME_REG(test282, jit_modr_u, -42UL, -9UL, -42UL % -9UL)
+TEST_REG_OTHER_REG(test283, jit_modr_u, -42UL, -9UL, -42UL % -9UL)
+
+
+TEST_IMM_SAME_REG(test360, jit_muli_u, -43UL, -4UL, -43UL * -4UL)
+TEST_IMM_OTHER_REG(test361, jit_muli_u, -43UL, -4UL, -43UL * -4UL)
+TEST_REG_SAME_REG(test362, jit_mulr_u, -43UL, -4UL, -43UL * -4UL)
+TEST_REG_OTHER_REG(test363, jit_mulr_u, -43UL, -4UL, -43UL * -4UL)
+
+TEST_IMM_SAME_REG(test364, jit_muli_u, -43UL, -9UL, -43UL * -9UL)
+TEST_IMM_OTHER_REG(test365, jit_muli_u, -43UL, -9UL, -43UL * -9UL)
+TEST_REG_SAME_REG(test366, jit_mulr_u, -43UL, -9UL, -43UL * -9UL)
+TEST_REG_OTHER_REG(test367, jit_mulr_u, -43UL, -9UL, -43UL * -9UL)
+
+
 void test_setup() 
 {
 	test_filename = __FILE__;
@@ -338,4 +375,36 @@ void test_setup()
 	SETUP_TEST(test161);
 	SETUP_TEST(test162);
 	SETUP_TEST(test163);
+
+	SETUP_TEST(test260);
+	SETUP_TEST(test261);
+	SETUP_TEST(test262);
+	SETUP_TEST(test263);
+	SETUP_TEST(test264);
+	SETUP_TEST(test265);
+	SETUP_TEST(test266);
+	SETUP_TEST(test267);
+
+	SETUP_TEST(test270);
+	SETUP_TEST(test271);
+	SETUP_TEST(test272);
+	SETUP_TEST(test273);
+	SETUP_TEST(test274);
+	SETUP_TEST(test275);
+	SETUP_TEST(test276);
+	SETUP_TEST(test277);
+
+	SETUP_TEST(test280);
+	SETUP_TEST(test281);
+	SETUP_TEST(test282);
+	SETUP_TEST(test283);
+
+	SETUP_TEST(test360);
+	SETUP_TEST(test361);
+	SETUP_TEST(test362);
+	SETUP_TEST(test363);
+	SETUP_TEST(test364);
+	SETUP_TEST(test365);
+	SETUP_TEST(test366);
+	SETUP_TEST(test367);
 }

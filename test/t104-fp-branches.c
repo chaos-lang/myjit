@@ -20,6 +20,16 @@
         CREATE_TEST_CASE_IMM(testname ## 6, _data_type, _jit_op, _operator, 1, 1, 0) \
         CREATE_TEST_CASE_IMM(testname ## 7, _data_type, _jit_op, _operator, 1, 1, 1) \
 
+#define CREATE_TEST_SUITE_IMM0(testname, _data_type, _jit_op, _operator) \
+        CREATE_TEST_CASE_IMM0(testname ## 0, _data_type, _jit_op, _operator, 0, 0, 0) \
+        CREATE_TEST_CASE_IMM0(testname ## 1, _data_type, _jit_op, _operator, 0, 0, 1) \
+        CREATE_TEST_CASE_IMM0(testname ## 2, _data_type, _jit_op, _operator, 0, 1, 0) \
+        CREATE_TEST_CASE_IMM0(testname ## 3, _data_type, _jit_op, _operator, 0, 1, 1) \
+        CREATE_TEST_CASE_IMM0(testname ## 4, _data_type, _jit_op, _operator, 1, 0, 0) \
+        CREATE_TEST_CASE_IMM0(testname ## 5, _data_type, _jit_op, _operator, 1, 0, 1) \
+        CREATE_TEST_CASE_IMM0(testname ## 6, _data_type, _jit_op, _operator, 1, 1, 0) \
+        CREATE_TEST_CASE_IMM0(testname ## 7, _data_type, _jit_op, _operator, 1, 1, 1) \
+
 #define SETUP_TESTS(testname) \
         SETUP_TEST(testname ## 0); \
         SETUP_TEST(testname ## 1); \
@@ -94,6 +104,37 @@ DEFINE_TEST(testname)\
         return 0; \
 }
 
+#define CREATE_TEST_CASE_IMM0(testname, _data_type, _jit_op, _operator, _equal, _negative, _greater) \
+DEFINE_TEST(testname)\
+{\
+	pdfv f1;\
+	jit_prolog(p, &f1);\
+\
+	_data_type firstval = 42;\
+	_data_type secval = 0;\
+	if (_equal) secval = firstval;\
+	if (_greater) secval = 60;\
+	if (_negative) secval *= -1;\
+	\
+	jit_fmovi(p, FR(1), firstval);\
+\
+	jit_op * br; \
+	br = _jit_op(p, 0, FR(1), secval);\
+	jit_fmovi(p, FR(3), -10); \
+	jit_op * e = jit_jmpi(p, 0); \
+	\
+	jit_patch(p, br); \
+	jit_fmovi(p, FR(3), 10); \
+	jit_patch(p, e); \
+	jit_fretr(p, FR(3), sizeof(double)); \
+\
+        JIT_GENERATE_CODE(p);\
+\
+        if (firstval _operator secval) ASSERT_EQ_DOUBLE(10.0, f1()); \
+        if (!(firstval _operator secval)) ASSERT_EQ_DOUBLE(-10.0, f1()); \
+        return 0; \
+}
+
 CREATE_TEST_SUITE_REG(test01reg, double, jit_fbltr, <)
 CREATE_TEST_SUITE_REG(test02reg, double, jit_fbler, <=)
 CREATE_TEST_SUITE_REG(test03reg, double, jit_fbger, >=)
@@ -107,6 +148,14 @@ CREATE_TEST_SUITE_IMM(test23imm, double, jit_fbgei, >=)
 CREATE_TEST_SUITE_IMM(test24imm, double, jit_fbgti, >)
 CREATE_TEST_SUITE_IMM(test25imm, double, jit_fbeqi, ==)
 CREATE_TEST_SUITE_IMM(test26imm, double, jit_fbnei, !=)
+
+CREATE_TEST_SUITE_IMM0(test31imm, double, jit_fblti, <)
+CREATE_TEST_SUITE_IMM0(test32imm, double, jit_fblei, <=)
+CREATE_TEST_SUITE_IMM0(test33imm, double, jit_fbgei, >=)
+CREATE_TEST_SUITE_IMM0(test34imm, double, jit_fbgti, >)
+CREATE_TEST_SUITE_IMM0(test35imm, double, jit_fbeqi, ==)
+CREATE_TEST_SUITE_IMM0(test36imm, double, jit_fbnei, !=)
+
 
 void test_setup()
 {
@@ -124,5 +173,12 @@ void test_setup()
         SETUP_TESTS(test24imm);
         SETUP_TESTS(test25imm);
         SETUP_TESTS(test26imm);
+
+	SETUP_TESTS(test31imm);
+        SETUP_TESTS(test32imm);
+        SETUP_TESTS(test33imm);
+        SETUP_TESTS(test34imm);
+        SETUP_TESTS(test35imm);
+        SETUP_TESTS(test36imm);
 }
 
