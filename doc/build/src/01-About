@@ -6,7 +6,7 @@ MyJIT is a library that allows to generate machine code at run-time and afterwar
 
 + support for an unlimited number of registers
 + thread-safety
-+ support for the i386, AMD64, and SPARC processors
++ support for the i386, AMD64, ARMv7-A, and SPARC processors
 + convenient debugging
 + easy to use and easy to extend design
 + support for optimizations

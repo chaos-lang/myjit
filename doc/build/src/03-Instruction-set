@@ -122,9 +122,9 @@ These operations have two operands, both of which have to be registers.
 
 ::
 
-	negr  reg      O1 := -O2
-	notr  reg      O1 := ~O2
-	fnegr freg     O1 := -O2
+	negr  reg, reg      O1 := -O2
+	notr  reg, reg      O1 := ~O2
+	fnegr freg, freg    O1 := -O2
 
 Load Operations
 ...............
@@ -245,6 +245,8 @@ Let us make few notes on function calls:
 + If calling a function defined in the same instance of the compiler (e.g., recursive function), you cannot pass values through registers. Each function has its own set of registers.
 
 + Only ``putargr``, ``putargi``, ``fputargr``, and ``fputargi`` operations are allowed inside the ``prepare-call`` block, otherwise, the behavior of the library is unspecified.
+
++ Passing a floating-point value to a variadic function is not supported on ARMv7 and has undefined behavior.
 
 List of operations related to function calls:
 
