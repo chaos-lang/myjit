@@ -430,7 +430,7 @@ static void assign_regs(struct jit * jit, struct jit_op * op)
 #if defined(JIT_ARCH_COMMON86) || defined(JIT_ARCH_ARM32)
 		case JIT_RETVAL: skip = assign_ret_reg(op, al->ret_reg); break;
 #endif
-#ifdef JIT_ARCH_SPARC
+#if defined(JIT_ARCH_SPARC) || defined(JIT_ARCH_ARM32)
 		case JIT_FRETVAL: skip = assign_ret_reg(op, al->fpret_reg); break;
 #endif
 		case JIT_GETARG: skip = assign_getarg(op, al); break;

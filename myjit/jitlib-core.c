@@ -144,6 +144,7 @@ static int jit_imm_overflow(struct jit *jit, jit_op *op, long value)
 	}
 	return 0;
 #else
+	long abs_value = (value < 0 ? - value : value);
 	if (GET_OP(op) == JIT_HMUL) return 1;
 	if (GET_OP(op) == JIT_SUBC) return 1;
 	if (op->code == (JIT_LD | IMM | SIGNED)) return 1;
@@ -159,10 +160,10 @@ static int jit_imm_overflow(struct jit *jit, jit_op *op, long value)
 	if ((op->code == (JIT_STX | IMM)) && (op->arg_size == 2)) return (value < -255) || (value > 255);;
 
 
-	if ((op->code == (JIT_LDX | IMM | UNSIGNED)) && (op->arg_size == 1) && (arm32_imm_rotate(-value) >= 0)) return 0;
-	if ((op->code == (JIT_LDX | IMM | UNSIGNED)) && (op->arg_size == 4) && (arm32_imm_rotate(-value) >= 0)) return 0;
-	if ((op->code == (JIT_LDX | IMM | SIGNED)) && (op->arg_size == 4) && (arm32_imm_rotate(-value) >= 0)) return 0;
-	if ((op->code == (JIT_STX | IMM)) && (op->arg_size == 4) && (arm32_imm_rotate(-value) >= 0)) return 0;
+	if ((op->code == (JIT_LDX | IMM | UNSIGNED)) && (op->arg_size == 1) && (arm32_imm_rotate(abs_value) >= 0)) return 0;
+	if ((op->code == (JIT_LDX | IMM | UNSIGNED)) && (op->arg_size == 4) && (arm32_imm_rotate(abs_value) >= 0)) return 0;
+	if ((op->code == (JIT_LDX | IMM | SIGNED)) && (op->arg_size == 4) && (arm32_imm_rotate(abs_value) >= 0)) return 0;
+	if ((op->code == (JIT_STX | IMM)) && (op->arg_size == 4) && (arm32_imm_rotate(abs_value) >= 0)) return 0;
 
 	if (GET_OP(op) == JIT_FLD) return 0;
 	if (GET_OP(op) == JIT_FLDX) return 0;
