@@ -103,6 +103,10 @@ DEFINE_TEST(test7)
 	return 0;
 }
 
+/*
+ * signed short
+ */
+
 DEFINE_TEST(test10)
 {
 	static short y = -2;
@@ -210,7 +214,230 @@ DEFINE_TEST(test16)
 	return 0;
 }
 
+/*
+ * signed char
+ */
+
 DEFINE_TEST(test20)
+{
+	static signed char y = -2;
+
+	plfv f1;
+	jit_prolog(p, &f1);
+	jit_ldi(p, R(0), &y, sizeof(signed char));
+	jit_retr(p, R(0));
+	JIT_GENERATE_CODE(p);
+
+	ASSERT_EQ(-2, f1());
+	return 0;
+}
+
+DEFINE_TEST(test21)
+{
+	static signed char y = -2;
+
+	plfv f1;
+	jit_prolog(p, &f1);
+	jit_ldi_u(p, R(0), &y, sizeof(signed char));
+	jit_retr(p, R(0));
+	JIT_GENERATE_CODE(p);
+
+	ASSERT_EQ(254, f1());
+	return 0;
+}
+
+DEFINE_TEST(test22)
+{
+	static signed char y = -2;
+
+	plfv f1;
+	jit_prolog(p, &f1);
+	jit_movi(p, R(1), &y);
+	jit_ldr(p, R(0), R(1), sizeof(signed char));
+	jit_retr(p, R(0));
+	JIT_GENERATE_CODE(p);
+
+	ASSERT_EQ(-2, f1());
+	return 0;
+}
+
+DEFINE_TEST(test23)
+{
+	static signed char y = -2;
+
+	plfv f1;
+	jit_prolog(p, &f1);
+	jit_movi(p, R(1), &y);
+	jit_ldr_u(p, R(0), R(1), sizeof(signed char));
+	jit_retr(p, R(0));
+	JIT_GENERATE_CODE(p);
+
+	ASSERT_EQ(254, f1());
+	return 0;
+}
+
+
+DEFINE_TEST(test24)
+{
+	static signed char y[] = { -2, -3, -5 };
+
+	plfv f1;
+	jit_prolog(p, &f1);
+	jit_movi(p, R(1), &y);
+	jit_ldxi(p, R(0), R(1), sizeof(signed char) * 1, sizeof(signed char));
+	jit_retr(p, R(0));
+	JIT_GENERATE_CODE(p);
+
+	ASSERT_EQ(-3, f1());
+	return 0;
+}
+
+DEFINE_TEST(test25)
+{
+	static signed char y[] = { -2, -3, -4 };
+
+	plfv f1;
+	jit_prolog(p, &f1);
+	jit_movi(p, R(1), &y);
+	jit_ldxi_u(p, R(0), R(1), sizeof(signed char) * 2, sizeof(signed char));
+	jit_retr(p, R(0));
+	JIT_GENERATE_CODE(p);
+
+	ASSERT_EQ(252, f1());
+	return 0;
+}
+
+DEFINE_TEST(test26)
+{
+	static signed char y[] = { -2, -3, -4, -5, -6 };
+
+	plfv f1;
+	jit_prolog(p, &f1);
+	jit_movi(p, R(2), 10);
+	jit_movi(p, R(1), sizeof(signed char));
+	jit_addi(p, R(1), R(1),  sizeof(signed char));
+	jit_stxi(p, &y, R(1), R(2), sizeof(signed char));
+	jit_reti(p, 42);
+	JIT_GENERATE_CODE(p);
+
+	ASSERT_EQ(42, f1());
+	ASSERT_EQ(10, y[2]);
+	return 0;
+}
+
+/*
+ * int
+ */
+
+DEFINE_TEST(test30)
+{
+	static signed int y = -2;
+
+	plfv f1;
+	jit_prolog(p, &f1);
+	jit_ldi(p, R(0), &y, sizeof(signed int));
+	jit_retr(p, R(0));
+	JIT_GENERATE_CODE(p);
+
+	ASSERT_EQ(-2, f1());
+	return 0;
+}
+
+DEFINE_TEST(test31)
+{
+	static signed int y = -2;
+
+	plfv f1;
+	jit_prolog(p, &f1);
+	jit_ldi_u(p, R(0), &y, sizeof(signed int));
+	jit_retr(p, R(0));
+	JIT_GENERATE_CODE(p);
+
+	ASSERT_EQ(UINT32_MAX - 1, f1());
+	return 0;
+}
+
+DEFINE_TEST(test32)
+{
+	static signed int y = -2;
+
+	plfv f1;
+	jit_prolog(p, &f1);
+	jit_movi(p, R(1), &y);
+	jit_ldr(p, R(0), R(1), sizeof(signed int));
+	jit_retr(p, R(0));
+	JIT_GENERATE_CODE(p);
+
+	ASSERT_EQ(-2, f1());
+	return 0;
+}
+
+DEFINE_TEST(test33)
+{
+	static signed int y = -2;
+
+	plfv f1;
+	jit_prolog(p, &f1);
+	jit_movi(p, R(1), &y);
+	jit_ldr_u(p, R(0), R(1), sizeof(signed int));
+	jit_retr(p, R(0));
+	JIT_GENERATE_CODE(p);
+
+	ASSERT_EQ(UINT32_MAX - 1, f1());
+	return 0;
+}
+
+DEFINE_TEST(test34)
+{
+	static signed int y[] = { -2, -3, -5 };
+
+	plfv f1;
+	jit_prolog(p, &f1);
+	jit_movi(p, R(1), &y);
+	jit_ldxi(p, R(0), R(1), sizeof(signed int) * 1, sizeof(signed int));
+	jit_retr(p, R(0));
+	JIT_GENERATE_CODE(p);
+
+	ASSERT_EQ(-3, f1());
+	return 0;
+}
+
+DEFINE_TEST(test35)
+{
+	static signed int y[] = { -2, -3, -4 };
+
+	plfv f1;
+	jit_prolog(p, &f1);
+	jit_movi(p, R(1), &y);
+	jit_ldxi_u(p, R(0), R(1), sizeof(signed int) * 2, sizeof(signed int));
+	jit_retr(p, R(0));
+	JIT_GENERATE_CODE(p);
+
+	ASSERT_EQ(UINT32_MAX - 3, f1());
+	return 0;
+}
+
+DEFINE_TEST(test36)
+{
+	static signed int y[] = { -2, -3, -4, -5, -6 };
+
+	plfv f1;
+	jit_prolog(p, &f1);
+	jit_movi(p, R(2), 10);
+	jit_movi(p, R(1), sizeof(signed int));
+	jit_addi(p, R(1), R(1),  sizeof(signed int));
+	jit_stxi(p, &y, R(1), R(2), sizeof(signed int));
+	jit_reti(p, 42);
+	JIT_GENERATE_CODE(p);
+
+	ASSERT_EQ(42, f1());
+	ASSERT_EQ(10, y[2]);
+	return 0;
+}
+
+
+
+DEFINE_TEST(test100)
 {
 	plfv f1;
 	jit_prolog(p, &f1);
@@ -223,7 +450,7 @@ DEFINE_TEST(test20)
 	return 0;
 }
 
-DEFINE_TEST(test21)
+DEFINE_TEST(test101)
 {
 	plfv f1;
 	jit_prolog(p, &f1);
@@ -236,7 +463,7 @@ DEFINE_TEST(test21)
 	return 0;
 }
 
-DEFINE_TEST(test22)
+DEFINE_TEST(test102)
 {
 	plfv f1;
 	jit_prolog(p, &f1);
@@ -271,4 +498,21 @@ void test_setup()
 	SETUP_TEST(test20);
 	SETUP_TEST(test21);
 	SETUP_TEST(test22);
+	SETUP_TEST(test23);
+	SETUP_TEST(test24);
+	SETUP_TEST(test25);
+	SETUP_TEST(test26);
+
+	SETUP_TEST(test30);
+	SETUP_TEST(test31);
+	SETUP_TEST(test32);
+	SETUP_TEST(test33);
+	SETUP_TEST(test34);
+	SETUP_TEST(test35);
+	SETUP_TEST(test36);
+
+
+	SETUP_TEST(test100);
+	SETUP_TEST(test101);
+	SETUP_TEST(test102);
 }

@@ -478,6 +478,146 @@ DEFINE_TEST(test34)
 	return 0;
 }
 
+DEFINE_TEST(test35)
+{
+#ifdef JIT_ARCH_SPARC
+	IGNORE_TEST
+#endif
+	plfv f1;
+	static signed char x[] = { -2, -3, -4, -5, -6, -7, -8, -9, -10 };
+	static signed char y[] = { 10, 20, 30, 40, 50, 60, 70, 80, 90, 100 };
+
+	jit_prolog(p, &f1);
+	jit_movi(p, R(0), x + 2);
+	jit_movi(p, R(1), y + 1);
+	jit_movi(p, R(2), 6);
+	
+	jit_op *op = jit_transferr(p, R(0), R(1), R(2), 1);
+	jit_transfer_subr(p, op, R(2));
+
+	jit_retr(p, R(2));
+	JIT_GENERATE_CODE(p);
+
+	ASSERT_EQ(6, f1());
+
+	ASSERT_EQ(-2, x[0]);
+	ASSERT_EQ(-3, x[1]);
+	ASSERT_EQ(14, x[2]);
+	ASSERT_EQ(24, x[3]);
+	ASSERT_EQ(34, x[4]);
+	ASSERT_EQ(44, x[5]);
+	ASSERT_EQ(54, x[6]);
+	ASSERT_EQ(64, x[7]);
+	ASSERT_EQ(-10, x[8]);
+
+	return 0;
+}
+
+DEFINE_TEST(test36)
+{
+#ifdef JIT_ARCH_SPARC
+	IGNORE_TEST
+#endif
+	plfv f1;
+	static signed short x[] = { -2, -3, -4, -5, -6, -7, -8, -9, -10 };
+	static signed short y[] = { 10, 20, 30, 40, 50, 60, 70, 80, 90, 100 };
+
+	jit_prolog(p, &f1);
+	jit_movi(p, R(0), x + 2);
+	jit_movi(p, R(1), y + 1);
+	jit_movi(p, R(2), 6);
+	
+	jit_op *op = jit_transferr(p, R(0), R(1), R(2), 2);
+	jit_transfer_xorr(p, op, R(2));
+
+	jit_retr(p, R(2));
+	JIT_GENERATE_CODE(p);
+
+	ASSERT_EQ(6, f1());
+
+	ASSERT_EQ(-2, x[0]);
+	ASSERT_EQ(-3, x[1]);
+	ASSERT_EQ(20 ^ 6, x[2]);
+	ASSERT_EQ(30 ^ 6, x[3]);
+	ASSERT_EQ(40 ^ 6, x[4]);
+	ASSERT_EQ(50 ^ 6, x[5]);
+	ASSERT_EQ(60 ^ 6, x[6]);
+	ASSERT_EQ(70 ^ 6, x[7]);
+	ASSERT_EQ(-10, x[8]);
+
+	return 0;
+}
+
+DEFINE_TEST(test37)
+{
+#ifdef JIT_ARCH_SPARC
+	IGNORE_TEST
+#endif
+	plfv f1;
+	static signed char x[] = { -2, -3, -4, -5, -6, -7, -8, -9, -10 };
+	static signed char y[] = { 10, 20, 30, 40, 50, 60, 70, 80, 90, 100 };
+
+	jit_prolog(p, &f1);
+	jit_movi(p, R(0), x + 2);
+	jit_movi(p, R(1), y + 1);
+	jit_movi(p, R(2), 6);
+	
+	jit_op *op = jit_transferr(p, R(0), R(1), R(2), 1);
+	jit_transfer_xorr(p, op, R_OUT);
+
+	jit_retr(p, R(2));
+	JIT_GENERATE_CODE(p);
+
+	ASSERT_EQ(6, f1());
+
+	ASSERT_EQ(-2, x[0]);
+	ASSERT_EQ(-3, x[1]);
+	ASSERT_EQ(20 ^ -4, x[2]);
+	ASSERT_EQ(30 ^ -5, x[3]);
+	ASSERT_EQ(40 ^ -6, x[4]);
+	ASSERT_EQ(50 ^ -7, x[5]);
+	ASSERT_EQ(60 ^ -8, x[6]);
+	ASSERT_EQ(70 ^ -9, x[7]);
+	ASSERT_EQ(-10, x[8]);
+
+	return 0;
+}
+
+DEFINE_TEST(test38)
+{
+#ifdef JIT_ARCH_SPARC
+	IGNORE_TEST
+#endif
+	plfv f1;
+	static signed short x[] = { -2, -3, -4, -5, -6, -7, -8, -9, -10 };
+	static signed short y[] = { 10, 20, 30, 40, 50, 60, 70, 80, 90, 100 };
+
+	jit_prolog(p, &f1);
+	jit_movi(p, R(0), x + 2);
+	jit_movi(p, R(1), y + 1);
+	jit_movi(p, R(2), 6);
+	
+	jit_op *op = jit_transferr(p, R(0), R(1), R(2), 2);
+	jit_transfer_xorr(p, op, R_OUT);
+
+	jit_retr(p, R(2));
+	JIT_GENERATE_CODE(p);
+
+	ASSERT_EQ(6, f1());
+
+	ASSERT_EQ(-2, x[0]);
+	ASSERT_EQ(-3, x[1]);
+	ASSERT_EQ(20 ^ -4, x[2]);
+	ASSERT_EQ(30 ^ -5, x[3]);
+	ASSERT_EQ(40 ^ -6, x[4]);
+	ASSERT_EQ(50 ^ -7, x[5]);
+	ASSERT_EQ(60 ^ -8, x[6]);
+	ASSERT_EQ(70 ^ -9, x[7]);
+	ASSERT_EQ(-10, x[8]);
+
+	return 0;
+}
+
 
 void test_setup()
 {
@@ -498,4 +638,8 @@ void test_setup()
 	SETUP_TEST(test32);
 	SETUP_TEST(test33);
 	SETUP_TEST(test34);
+	SETUP_TEST(test35);
+	SETUP_TEST(test36);
+	SETUP_TEST(test37);
+	SETUP_TEST(test38);
 }
