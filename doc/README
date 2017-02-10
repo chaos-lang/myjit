@@ -6,7 +6,7 @@ MyJIT is a library that allows to generate machine code at run-time and afterwar
 
 + support for an unlimited number of registers
 + thread-safety
-+ support for the i386, AMD64, and SPARC processors
++ support for the i386, AMD64, ARMv7-A, and SPARC processors
 + convenient debugging
 + easy to use and easy to extend design
 + support for optimizations
@@ -63,45 +63,55 @@ Each binary arithmetic operation has exactly three operands. First two operands 
 
 ::
 
-	addr   reg, reg, reg      O1 := O2 + O3
-	addi   reg, reg, imm      O1 := O2 + O3
-	addxr  reg, reg, reg      O1 := O2 + (O3 + carry)
-	addxi  reg, reg, imm      O1 := O2 + (O3 + carry)
-	addcr  reg, reg, reg      O1 := O2 + O3, set carry
-	addci  reg, reg, imm      O1 := O2 + O3, set carry
+	addr    reg, reg, reg      O1 := O2 + O3
+	addi    reg, reg, imm      O1 := O2 + O3
+	addxr   reg, reg, reg      O1 := O2 + (O3 + carry)
+	addxi   reg, reg, imm      O1 := O2 + (O3 + carry)
+	addcr   reg, reg, reg      O1 := O2 + O3, set carry
+	addci   reg, reg, imm      O1 := O2 + O3, set carry
 
-	subr   reg, reg, reg      O1 := O2 - O3
-	subi   reg, reg, imm      O1 := O2 - O3
-	subxr  reg, reg, reg      O1 := O2 - (O3 + carry)
-	subxi  reg, reg, imm      O1 := O2 - (O3 + carry)
-	subcr  reg, reg, reg      O1 := O2 - O3, set carry
-	subci  reg, reg, imm      O1 := O2 - O3, set carry
-	rsbr   reg, reg, reg      O1 := O3 - O2
-	rsbi   reg, reg, imm      O1 := O3 - O2
+	subr    reg, reg, reg      O1 := O2 - O3
+	subi    reg, reg, imm      O1 := O2 - O3
+	subxr   reg, reg, reg      O1 := O2 - (O3 + carry)
+	subxi   reg, reg, imm      O1 := O2 - (O3 + carry)
+	subcr   reg, reg, reg      O1 := O2 - O3, set carry
+	subci   reg, reg, imm      O1 := O2 - O3, set carry
+	rsbr    reg, reg, reg      O1 := O3 - O2
+	rsbi    reg, reg, imm      O1 := O3 - O2
 
-	mulr   reg, reg, reg      O1 := O2 * O3
-	muli   reg, reg, imm      O1 := O2 * O3
-	hmulr  reg, reg, reg      O1 := high bits of O2 * O3
-	hmuli  reg, reg, imm      O1 := high bits of O2 * O3
+	mulr    reg, reg, reg      O1 := O2 * O3
+	muli    reg, reg, imm      O1 := O2 * O3
+	hmulr   reg, reg, reg      O1 := high bits of O2 * O3
+	hmuli   reg, reg, imm      O1 := high bits of O2 * O3
 
-	divr   reg, reg, reg      O1 := O2 / O3
-	divi   reg, reg, imm      O1 := O2 / O3
-	modr   reg, reg, reg      O1 := O2 % O3
-	modi   reg, reg, imm      O1 := O2 % O3
+	mulr_u  reg, reg, reg      O1 := O2 * O3
+	muli_u  reg, reg, imm      O1 := O2 * O3
+	hmulr_u reg, reg, reg      O1 := high bits of O2 * O3
+	hmuli_u reg, reg, imm      O1 := high bits of O2 * O3
 
-	andr   reg, reg, reg      O1 := O2 & O3
-	andi   reg, reg, imm      O1 := O2 & O3
-	orr    reg, reg, reg      O1 := O2 | O3
-	ori    reg, reg, imm      O1 := O2 | O3
-	xorr   reg, reg, reg      O1 := O2 ^ O3
-	xori   reg, reg, imm      O1 := O2 ^ O3
+	divr    reg, reg, reg      O1 := O2 / O3
+	divi    reg, reg, imm      O1 := O2 / O3
+	modr    reg, reg, reg      O1 := O2 % O3
+	modi    reg, reg, imm      O1 := O2 % O3
 
-	lshr   reg, reg, reg      O1 := O2 << O3
-	lshi   reg, reg, imm      O1 := O2 << O3
-	rshr   reg, reg, reg      O1 := O2 >> O3
-	rshi   reg, reg, imm      O1 := O2 >> O3
-	rshr_u reg, reg, reg      O1 := O2 >> O3  (unsigned variant)
-	rshi_u reg, reg, imm      O1 := O2 >> O3  (unsigned variant)
+	divr_u  reg, reg, reg      O1 := O2 / O3
+	divi_u  reg, reg, imm      O1 := O2 / O3
+	modr_u  reg, reg, reg      O1 := O2 % O3
+	modi_u  reg, reg, imm      O1 := O2 % O3
+
+	andr    reg, reg, reg      O1 := O2 & O3
+	andi    reg, reg, imm      O1 := O2 & O3
+	orr     reg, reg, reg      O1 := O2 | O3
+	ori     reg, reg, imm      O1 := O2 | O3
+	xorr    reg, reg, reg      O1 := O2 ^ O3
+	xori    reg, reg, imm      O1 := O2 ^ O3
+
+	lshr    reg, reg, reg      O1 := O2 << O3
+	lshi    reg, reg, imm      O1 := O2 << O3
+	rshr    reg, reg, reg      O1 := O2 >> O3
+	rshi    reg, reg, imm      O1 := O2 >> O3
+	rshr_u  reg, reg, reg      O1 := O2 >> O3  (unsigned variant)
+	rshi_u  reg, reg, imm      O1 := O2 >> O3  (unsigned variant)
 
 Operations ``subx`` and ``addx`` have to directly follow ``subc`` and ``addc`` otherwise the result is undefined. Note that you can use the ``unsigned`` flag with the ``rshr`` operation to propagate the first bit accordingly.
 
@@ -127,9 +137,9 @@ These operations have two operands, both of which have to be registers.
 
 ::
 
-	negr  reg, reg       O1 := -O2
-	notr  reg, reg       O1 := ~O2
-	fnegr freg, freg     O1 := -O2
+	negr  reg, reg      O1 := -O2
+	notr  reg, reg      O1 := ~O2
+	fnegr freg, freg    O1 := -O2
 
 Load Operations
 ...............
@@ -250,6 +260,8 @@ Let us make few notes on function calls:
 + If calling a function defined in the same instance of the compiler (e.g., recursive function), you cannot pass values through registers. Each function has its own set of registers.
 
 + Only ``putargr``, ``putargi``, ``fputargr``, and ``fputargi`` operations are allowed inside the ``prepare-call`` block, otherwise, the behavior of the library is unspecified.
+
++ Passing a floating-point value to a variadic function is not supported on ARMv7 and has undefined behavior.
 
 List of operations related to function calls:
 
@@ -630,11 +642,15 @@ Notes on Development
 
 + The primary use of this library is in our compiler of the Schemik programming language and the development of this library is driven by requirements of this compiler. Nevertheless, MyJIT is a general purpose library and its functionality is not limited.
 
++ Another notable user of the library is `Tigress obfuscator <http://tigress.cs.arizona.edu/>`_.
+
 + The library is almost complete and each release undergoes extensive testing (hundreds of tests), therefore, we hope there are no serious bugs. If you found any, please, let us know.
 
 + Despite the fact that the library is almost complete, it is still under development and the API may slightly (but not much) change in the near future.
 
-+ Only the i386, AMD64, and SPARC platforms are supported right now, however, port to other architecture should be easy and straightforward.
++ Only the i386, AMD64, ARMv7-A, and SPARC platforms are supported right now, however, port to other architecture should be easy and straightforward.
+
++ The ARMv7 port was only made possible by generous support from Christian Collberg, University of Arizona.
 
 + At this moment, MyJIT has support for floating point arithmetics. However, i386 port supports only processors having SSE2 unit, i.e., floating-point operations won't work on legacy CPUs without this unit.
 
