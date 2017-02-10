@@ -325,6 +325,22 @@ DEFINE_TEST(test26)
 	return 0;
 }
 
+DEFINE_TEST(test27)
+{
+	static unsigned short y[] = { -2, -3, -4, -5, -6 };
+
+	plfv f1;
+	jit_prolog(p, &f1);
+	jit_movi(p, R(2), 3 * sizeof(unsigned short));
+	jit_movi(p, R(1), sizeof(unsigned short));
+	jit_ldxr_u(p, R(0), R(1), R(2), sizeof(unsigned short));
+	jit_retr(p, R(0));
+	JIT_GENERATE_CODE(p);
+
+	ASSERT_EQ(65536 - 4, y[2]);
+	return 0;
+}
+
 /*
  * int
  */
@@ -435,6 +451,63 @@ DEFINE_TEST(test36)
 	return 0;
 }
 
+DEFINE_TEST(test37)
+{
+	static signed int y[] = { -2, -3, -4, -5, -6 };
+
+	plfv f1;
+	jit_prolog(p, &f1);
+	jit_movi(p, R(1), &y);
+	jit_movi(p, R(2), 3 * sizeof(signed int));
+	jit_ldxr(p, R(0), R(1), R(2), sizeof(signed int));
+	jit_retr(p, R(0));
+	JIT_GENERATE_CODE(p);
+
+	ASSERT_EQ(-5, f1());
+	return 0;
+}
+
+DEFINE_TEST(test40)
+{
+	static signed char y[] = { -2, -3, -4, -5, -6 };
+
+	plfv f1;
+	jit_prolog(p, &f1);
+	jit_movi(p, R(1), &y);
+	jit_movi(p, R(2), -66);
+	jit_stxi(p, 2 * sizeof(signed char), R(1), R(2), sizeof(signed char));
+	jit_reti(p, 12);
+	JIT_GENERATE_CODE(p);
+
+	ASSERT_EQ(12, f1());
+	ASSERT_EQ(-2, y[0]);
+	ASSERT_EQ(-3, y[1]);
+	ASSERT_EQ(-66, y[2]);
+	ASSERT_EQ(-5, y[3]);
+	ASSERT_EQ(-6, y[4]);
+	return 0;
+}
+
+DEFINE_TEST(test41)
+{
+	static short y[] = { -2, -3, -4, -5, -6 };
+
+	plfv f1;
+	jit_prolog(p, &f1);
+	jit_movi(p, R(1), &y);
+	jit_movi(p, R(2), -66);
+	jit_stxi(p, 2 * sizeof(short), R(1), R(2), sizeof(short));
+	jit_reti(p, 12);
+	JIT_GENERATE_CODE(p);
+
+	ASSERT_EQ(12, f1());
+	ASSERT_EQ(-2, y[0]);
+	ASSERT_EQ(-3, y[1]);
+	ASSERT_EQ(-66, y[2]);
+	ASSERT_EQ(-5, y[3]);
+	ASSERT_EQ(-6, y[4]);
+	return 0;
+}
 
 
 DEFINE_TEST(test100)
@@ -502,6 +575,7 @@ void test_setup()
 	SETUP_TEST(test24);
 	SETUP_TEST(test25);
 	SETUP_TEST(test26);
+	SETUP_TEST(test27);
 
 	SETUP_TEST(test30);
 	SETUP_TEST(test31);
@@ -510,7 +584,10 @@ void test_setup()
 	SETUP_TEST(test34);
 	SETUP_TEST(test35);
 	SETUP_TEST(test36);
+	SETUP_TEST(test37);
 
+	SETUP_TEST(test40);
+	SETUP_TEST(test41);
 
 	SETUP_TEST(test100);
 	SETUP_TEST(test101);
