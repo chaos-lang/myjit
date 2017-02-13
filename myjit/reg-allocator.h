@@ -379,6 +379,7 @@ static int is_transfer_op(jit_op *op)
 static void associate_register(struct jit_reg_allocator * al, jit_op * op, int i)
 {
 	jit_hw_reg * reg = rmap_get(op->regmap, op->arg[i]);
+	if (GET_OP(op) == JIT_FRETVAL) printf(":JJJ:%i\n", reg->id);
 	if (reg) op->r_arg[i] = reg->id;
 	else {
 		if (!is_transfer_op(op) 
@@ -430,7 +431,7 @@ static void assign_regs(struct jit * jit, struct jit_op * op)
 #if defined(JIT_ARCH_COMMON86) || defined(JIT_ARCH_ARM32)
 		case JIT_RETVAL: skip = assign_ret_reg(op, al->ret_reg); break;
 #endif
-#if defined(JIT_ARCH_SPARC) || defined(JIT_ARCH_ARM32)
+#if defined(JIT_ARCH_SPARC) || defined(JIT_ARCH_ARM32) || defined(JIT_ARCH_AMD64)
 		case JIT_FRETVAL: skip = assign_ret_reg(op, al->fpret_reg); break;
 #endif
 		case JIT_GETARG: skip = assign_getarg(op, al); break;

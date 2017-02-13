@@ -76,7 +76,7 @@ static int emit_pop_reg(struct jit * jit, jit_hw_reg * r, int stack_offset)
 		common86_mov_reg_membase(jit->ip, r->id, COMMON86_SP, stack_offset, REG_SIZE);
 		stack_offset += REG_SIZE;
 	} else {
-		sse_movlpd_xreg_membase(jit->ip, r->id, COMMON86_SP, 0);
+		sse_movlpd_xreg_membase(jit->ip, r->id, COMMON86_SP, stack_offset);
 		stack_offset += 8;
 	}
 	return stack_offset;

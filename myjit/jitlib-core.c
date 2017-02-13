@@ -235,7 +235,9 @@ static inline void jit_correct_float_imms(struct jit * jit)
 		if (GET_OP(op) == JIT_FLDX) continue;
 		if (GET_OP(op) == JIT_FST) continue;
 		if (GET_OP(op) == JIT_FSTX) continue;
+#if defined(JIT_ARCH_ARM32)
 		if (is_cond_branch_op(op) && IS_IMM(op) && (op->flt_imm == 0.0)) continue;
+#endif
 // FIXME: TODO		if (GET_OP(op) == JIT_FMSG) continue;
 		int imm_arg;
 		for (int i = 1; i < 4; i++)

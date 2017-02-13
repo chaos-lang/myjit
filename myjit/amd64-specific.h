@@ -357,9 +357,11 @@ static void emit_fret_op(struct jit * jit, jit_op * op)
 
 static void emit_fretval_op(struct jit * jit, jit_op * op)
 {
-	jit_value arg = op->r_arg[0];
-	if (op->arg_size == sizeof(float)) sse_cvtss2sd_reg_reg(jit->ip, arg, COMMON86_XMM0);
-	else if (arg != COMMON86_XMM0) sse_movsd_reg_reg(jit->ip, arg, COMMON86_XMM0);
+	if (op->arg_size == sizeof(float)) sse_cvtss2sd_reg_reg(jit->ip, COMMON86_XMM0, COMMON86_XMM0);
+// 	XXX: register allocator takes care of the assignment
+//	jit_value arg = op->r_arg[0];
+//	if (op->arg_size == sizeof(float)) sse_cvtss2sd_reg_reg(jit->ip, arg, COMMON86_XMM0);
+//	else if (arg != COMMON86_XMM0) sse_movsd_reg_reg(jit->ip, arg, COMMON86_XMM0);
 }
 
 void jit_patch_external_calls(struct jit * jit)
