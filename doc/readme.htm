@@ -3,7 +3,7 @@
 <html xmlns="http://www.w3.org/1999/xhtml" xml:lang="en" lang="en">
 <head>
 <meta http-equiv="Content-Type" content="text/html; charset=utf-8" />
-<meta name="generator" content="Docutils 0.12: http://docutils.sourceforge.net/" />
+<meta name="generator" content="Docutils 0.11: http://docutils.sourceforge.net/" />
 <title></title>
 <style type="text/css">
 
@@ -153,7 +153,7 @@ hr {
 <ul class="simple">
 <li>support for an unlimited number of registers</li>
 <li>thread-safety</li>
-<li>support for the i386, AMD64, and SPARC processors</li>
+<li>support for the i386, AMD64, ARMv7-A, and SPARC processors</li>
 <li>convenient debugging</li>
 <li>easy to use and easy to extend design</li>
 <li>support for optimizations</li>
@@ -198,45 +198,55 @@ fmov  freg, fimm        O1 := O2
 <h3>Binary Arithmetic Operations</h3>
 <p>Each binary arithmetic operation has exactly three operands. First two operands are always registers and the last one can be an immediate value or register. These operations are fully compatible with those in the GNU lightning instruction set.</p>
 <pre class="literal-block">
-addr   reg, reg, reg      O1 := O2 + O3
-addi   reg, reg, imm      O1 := O2 + O3
-addxr  reg, reg, reg      O1 := O2 + (O3 + carry)
-addxi  reg, reg, imm      O1 := O2 + (O3 + carry)
-addcr  reg, reg, reg      O1 := O2 + O3, set carry
-addci  reg, reg, imm      O1 := O2 + O3, set carry
+addr    reg, reg, reg      O1 := O2 + O3
+addi    reg, reg, imm      O1 := O2 + O3
+addxr   reg, reg, reg      O1 := O2 + (O3 + carry)
+addxi   reg, reg, imm      O1 := O2 + (O3 + carry)
+addcr   reg, reg, reg      O1 := O2 + O3, set carry
+addci   reg, reg, imm      O1 := O2 + O3, set carry
 
-subr   reg, reg, reg      O1 := O2 - O3
-subi   reg, reg, imm      O1 := O2 - O3
-subxr  reg, reg, reg      O1 := O2 - (O3 + carry)
-subxi  reg, reg, imm      O1 := O2 - (O3 + carry)
-subcr  reg, reg, reg      O1 := O2 - O3, set carry
-subci  reg, reg, imm      O1 := O2 - O3, set carry
-rsbr   reg, reg, reg      O1 := O3 - O2
-rsbi   reg, reg, imm      O1 := O3 - O2
+subr    reg, reg, reg      O1 := O2 - O3
+subi    reg, reg, imm      O1 := O2 - O3
+subxr   reg, reg, reg      O1 := O2 - (O3 + carry)
+subxi   reg, reg, imm      O1 := O2 - (O3 + carry)
+subcr   reg, reg, reg      O1 := O2 - O3, set carry
+subci   reg, reg, imm      O1 := O2 - O3, set carry
+rsbr    reg, reg, reg      O1 := O3 - O2
+rsbi    reg, reg, imm      O1 := O3 - O2
 
-mulr   reg, reg, reg      O1 := O2 * O3
-muli   reg, reg, imm      O1 := O2 * O3
-hmulr  reg, reg, reg      O1 := high bits of O2 * O3
-hmuli  reg, reg, imm      O1 := high bits of O2 * O3
+mulr    reg, reg, reg      O1 := O2 * O3
+muli    reg, reg, imm      O1 := O2 * O3
+hmulr   reg, reg, reg      O1 := high bits of O2 * O3
+hmuli   reg, reg, imm      O1 := high bits of O2 * O3
 
-divr   reg, reg, reg      O1 := O2 / O3
-divi   reg, reg, imm      O1 := O2 / O3
-modr   reg, reg, reg      O1 := O2 % O3
-modi   reg, reg, imm      O1 := O2 % O3
+mulr_u  reg, reg, reg      O1 := O2 * O3
+muli_u  reg, reg, imm      O1 := O2 * O3
+hmulr_u reg, reg, reg      O1 := high bits of O2 * O3
+hmuli_u reg, reg, imm      O1 := high bits of O2 * O3
 
-andr   reg, reg, reg      O1 := O2 &amp; O3
-andi   reg, reg, imm      O1 := O2 &amp; O3
-orr    reg, reg, reg      O1 := O2 | O3
-ori    reg, reg, imm      O1 := O2 | O3
-xorr   reg, reg, reg      O1 := O2 ^ O3
-xori   reg, reg, imm      O1 := O2 ^ O3
+divr    reg, reg, reg      O1 := O2 / O3
+divi    reg, reg, imm      O1 := O2 / O3
+modr    reg, reg, reg      O1 := O2 % O3
+modi    reg, reg, imm      O1 := O2 % O3
 
-lshr   reg, reg, reg      O1 := O2 &lt;&lt; O3
-lshi   reg, reg, imm      O1 := O2 &lt;&lt; O3
-rshr   reg, reg, reg      O1 := O2 &gt;&gt; O3
-rshi   reg, reg, imm      O1 := O2 &gt;&gt; O3
-rshr_u reg, reg, reg      O1 := O2 &gt;&gt; O3  (unsigned variant)
-rshi_u reg, reg, imm      O1 := O2 &gt;&gt; O3  (unsigned variant)
+divr_u  reg, reg, reg      O1 := O2 / O3
+divi_u  reg, reg, imm      O1 := O2 / O3
+modr_u  reg, reg, reg      O1 := O2 % O3
+modi_u  reg, reg, imm      O1 := O2 % O3
+
+andr    reg, reg, reg      O1 := O2 &amp; O3
+andi    reg, reg, imm      O1 := O2 &amp; O3
+orr     reg, reg, reg      O1 := O2 | O3
+ori     reg, reg, imm      O1 := O2 | O3
+xorr    reg, reg, reg      O1 := O2 ^ O3
+xori    reg, reg, imm      O1 := O2 ^ O3
+
+lshr    reg, reg, reg      O1 := O2 &lt;&lt; O3
+lshi    reg, reg, imm      O1 := O2 &lt;&lt; O3
+rshr    reg, reg, reg      O1 := O2 &gt;&gt; O3
+rshi    reg, reg, imm      O1 := O2 &gt;&gt; O3
+rshr_u  reg, reg, reg      O1 := O2 &gt;&gt; O3  (unsigned variant)
+rshi_u  reg, reg, imm      O1 := O2 &gt;&gt; O3  (unsigned variant)
 </pre>
 <p>Operations <tt class="docutils literal">subx</tt> and <tt class="docutils literal">addx</tt> have to directly follow <tt class="docutils literal">subc</tt> and <tt class="docutils literal">addc</tt> otherwise the result is undefined. Note that you can use the <tt class="docutils literal">unsigned</tt> flag with the <tt class="docutils literal">rshr</tt> operation to propagate the first bit accordingly.</p>
 <p>There are also equivalent operations for floating-point values.</p>
@@ -257,9 +267,9 @@ fdivi   freg, freg, fimm      O1 := O2 / O3
 <h3>Unary Arithmetic Operations</h3>
 <p>These operations have two operands, both of which have to be registers.</p>
 <pre class="literal-block">
-negr  reg      O1 := -O2
-notr  reg      O1 := ~O2
-fnegr freg     O1 := -O2
+negr  reg, reg      O1 := -O2
+notr  reg, reg      O1 := ~O2
+fnegr freg, freg    O1 := -O2
 </pre>
 </div>
 <div class="section" id="load-operations">
@@ -374,6 +384,7 @@ roundr  reg, freg        O1 := round(O2)
 <ul class="simple">
 <li>If calling a function defined in the same instance of the compiler (e.g., recursive function), you cannot pass values through registers. Each function has its own set of registers.</li>
 <li>Only <tt class="docutils literal">putargr</tt>, <tt class="docutils literal">putargi</tt>, <tt class="docutils literal">fputargr</tt>, and <tt class="docutils literal">fputargi</tt> operations are allowed inside the <tt class="docutils literal"><span class="pre">prepare-call</span></tt> block, otherwise, the behavior of the library is unspecified.</li>
+<li>Passing a floating-point value to a variadic function is not supported on ARMv7 and has undefined behavior.</li>
 </ul>
 <p>List of operations related to function calls:</p>
 <ul class="simple">
@@ -501,11 +512,11 @@ data_data imm
 <h1>Getting Started</h1>
 <p>We start with a really simple example---function returning its argument incremented by one. The source code of this example can be found in <tt class="docutils literal">demo1.c</tt> which is part of the MyJIT package.</p>
 <pre class="code c literal-block">
-<span class="comment preproc">#include &lt;stdlib.h&gt;
-#include &lt;stdio.h&gt;
+<span class="comment preproc">#include</span> <span class="comment preprocfile">&lt;stdlib.h&gt;</span><span class="comment preproc">
+#include</span> <span class="comment preprocfile">&lt;stdio.h&gt;</span><span class="comment preproc">
 </span>
 <span class="comment single">// includes the header file
-</span><span class="comment preproc">#include &quot;myjit/jitlib.h&quot;
+</span><span class="comment preproc">#include</span> <span class="comment preprocfile">&quot;myjit/jitlib.h&quot;</span><span class="comment preproc">
 </span>
 <span class="comment single">// pointer to a function accepting one argument of type long and returning long value
 </span><span class="keyword">typedef</span> <span class="name function">long</span> <span class="punctuation">(</span><span class="operator">*</span> <span class="name">plfl</span><span class="punctuation">)(</span><span class="keyword type">long</span><span class="punctuation">);</span>
@@ -553,8 +564,8 @@ data_data imm
 <p>We assume that the code above is quite (self-)explanatory, and thus, we do not include more comments on this. However, let us make a note on compiling programs using MyJIT. To start with MyJIT, it is sufficient to copy the <tt class="docutils literal">myjit</tt> subdirectory into your project. Programs using the MyJIT should include the <tt class="docutils literal">#include &quot;myjit/jitlib.h&quot;</tt> header file. In order to link the application and build a proper executable file, it is necessary to also compile <tt class="docutils literal"><span class="pre">&quot;myjit/libjit-core.c&quot;</span></tt>.</p>
 <p>For instance, to build a program with <tt class="docutils literal">gcc</tt> you may use the following steps:</p>
 <pre class="code bash literal-block">
-gcc -c -g -Winline -Wall -std<span class="operator">=</span>c99 -pedantic -D_XOPEN_SOURCE<span class="operator">=</span>600 demo1.c
-gcc -c -g -Winline -Wall -std<span class="operator">=</span>c99 -pedantic -D_XOPEN_SOURCE<span class="operator">=</span>600 myjit/jitlib-core.c
+gcc -c -g -Winline -Wall -std<span class="operator">=</span>c99 -pedantic -D_XOPEN_SOURCE<span class="operator">=</span><span class="literal number">600</span> demo1.c
+gcc -c -g -Winline -Wall -std<span class="operator">=</span>c99 -pedantic -D_XOPEN_SOURCE<span class="operator">=</span><span class="literal number">600</span> myjit/jitlib-core.c
 gcc -o demo1 -g -Wall -std<span class="operator">=</span>c99 -pedantic demo1.o jitlib-core.o
 </pre>
 <p>The first command compiles the example, the second one compiles functions used by MyJIT, and the last one links the object files together and creates an execute file---<tt class="docutils literal">demo1</tt>.</p>
@@ -699,9 +710,11 @@ git clone git://git.code.sf.net/p/myjit/maincode myjit-maincode
 <h1>Notes on Development</h1>
 <ul class="simple">
 <li>The primary use of this library is in our compiler of the Schemik programming language and the development of this library is driven by requirements of this compiler. Nevertheless, MyJIT is a general purpose library and its functionality is not limited.</li>
+<li>Another notable user of the library is <a class="reference external" href="http://tigress.cs.arizona.edu/">Tigress obfuscator</a>.</li>
 <li>The library is almost complete and each release undergoes extensive testing (hundreds of tests), therefore, we hope there are no serious bugs. If you found any, please, let us know.</li>
 <li>Despite the fact that the library is almost complete, it is still under development and the API may slightly (but not much) change in the near future.</li>
-<li>Only the i386, AMD64, and SPARC platforms are supported right now, however, port to other architecture should be easy and straightforward.</li>
+<li>Only the i386, AMD64, ARMv7-A, and SPARC platforms are supported right now, however, port to other architecture should be easy and straightforward.</li>
+<li>The ARMv7 port was only made possible by generous support from Christian Collberg, University of Arizona.</li>
 <li>At this moment, MyJIT has support for floating point arithmetics. However, i386 port supports only processors having SSE2 unit, i.e., floating-point operations won't work on legacy CPUs without this unit.</li>
 <li>If you are using this library or if you want to contribute some code (e.g., port to some architecture), please, let us know.</li>
 <li>The documentation lacks information on internals of MyJIT. This is purely intentional because the library is still developed. We expect that the quality of the documentation will improve with the maturity of the project. If in doubts,  ask in the mailing list (<a class="reference external" href="mailto:myjit-devel&#64;lists.sourceforge.net">myjit-devel&#64;lists.sourceforge.net</a>). If you  would like to participate on documentation improvements, please let us know, we will really appreciate it.</li>
@@ -710,7 +723,7 @@ git clone git://git.code.sf.net/p/myjit/maincode myjit-maincode
 </div>
 <div class="footer">
 <hr class="footer" />
-Generated on: 2015-03-15 17:43 UTC.
+Generated on: 2017-02-13 17:59 UTC.
 
 </div>
 </body>
