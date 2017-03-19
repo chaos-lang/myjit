@@ -549,6 +549,38 @@ DEFINE_TEST(test102)
 	return 0;
 }
 
+// test reg = *reg 4-byte zero-extend
+DEFINE_TEST(test50)
+{
+	int32_t i = 5;
+
+	plfv f1;
+	jit_prolog(p, &f1);
+	jit_movi(p, R(0), &i);
+	jit_ldr_u(p, R(0), R(0), 4);
+
+	jit_retr(p, R(0));
+	JIT_GENERATE_CODE(p);
+	ASSERT_EQ(5, f1());
+	return 0;
+}
+
+// test reg = *(reg+1) 4-byte zero-extend
+DEFINE_TEST(test51)
+{
+	int32_t i[2] = {5, 6};
+
+	plfv f1;
+	jit_prolog(p, &f1);
+	jit_movi(p, R(0), i);
+	jit_ldxi_u(p, R(0), R(0), 4, 4);
+	jit_retr(p, R(0));
+
+	JIT_GENERATE_CODE(p);
+	ASSERT_EQ(6, f1());
+	return 0;
+}
+
 void test_setup()
 {
 	test_filename = __FILE__;
@@ -588,6 +620,9 @@ void test_setup()
 
 	SETUP_TEST(test40);
 	SETUP_TEST(test41);
+
+	SETUP_TEST(test50);
+	SETUP_TEST(test51);
 
 	SETUP_TEST(test100);
 	SETUP_TEST(test101);

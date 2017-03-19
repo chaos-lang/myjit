@@ -304,13 +304,8 @@ typedef union {
 
 #define amd64_movzx_reg_reg(inst,dreg,reg,size)	\
 	do {	\
-		if ((size) == 8) { \
-			amd64_mov_reg_reg(inst, dreg, reg, 8); \
-			break; \
-		} \
-		if ((size) == 4) { \
-			amd64_alu_reg_reg(inst,X86_XOR,dreg,dreg); \
-			amd64_mov_reg_reg(inst, dreg, reg, 4); \
+		if ((size) == 8 || (size) == 4) { \
+			amd64_mov_reg_reg(inst, dreg, reg, size); \
 			break; \
 		} \
 		if ((size) == 2) \
@@ -326,12 +321,7 @@ typedef union {
 
 #define amd64_movzx_reg_mem(inst,reg,mem,size) \
 	do {    \
-		if ((size) == 8) { \
-			amd64_mov_reg_mem(inst,reg,mem,size); \
-			break; \
-		} \
-		if ((size) == 4) { \
-			amd64_alu_reg_reg(inst,X86_XOR,reg,reg); \
+		if ((size) == 8 || (size) == 4) { \
 			amd64_mov_reg_mem(inst,reg,mem,size); \
 			break; \
 		} \
@@ -350,12 +340,7 @@ typedef union {
 
 #define amd64_movzx_reg_memindex(inst,reg,basereg,disp,indexreg,shift,size)       \
 	do {    \
-		if ((size) == 8) { \
-			amd64_mov_reg_memindex(inst,reg,basereg,disp,indexreg,shift,size); \
-			break; \
-		} \
-		if ((size) == 4) { \
-			amd64_alu_reg_reg(inst,X86_XOR,reg,reg); \
+		if ((size) == 8 || (size) == 4) { \
 			amd64_mov_reg_memindex(inst,reg,basereg,disp,indexreg,shift,size); \
 			break; \
 		} \
@@ -372,12 +357,7 @@ typedef union {
 
 #define amd64_movzx_reg_membase(inst,reg,basereg,disp,size)       \
 	do {    \
-		if ((size) == 8) { \
-			amd64_mov_reg_membase(inst, reg, basereg, disp,size); \
-			break; \
-		} \
-		if ((size) == 4) { \
-			amd64_alu_reg_reg(inst,X86_XOR,reg,reg); \
+		if ((size) == 8 || (size) == 4) { \
 			amd64_mov_reg_membase(inst, reg, basereg, disp,size); \
 			break; \
 		} \
