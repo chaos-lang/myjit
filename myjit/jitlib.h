@@ -454,26 +454,26 @@ int jit_allocai(struct jit * jit, int size);
 #define jit_beqr(jit, a, b, c) jit_add_op(jit, JIT_BEQ | REG, SPEC(IMM, REG, REG), (jit_value)(a), b, c, 0, jit_debug_info_new(__FILE__, __func__, __LINE__))
 #define jit_beqi(jit, a, b, c) jit_add_op(jit, JIT_BEQ | IMM, SPEC(IMM, REG, IMM), (jit_value)(a), b, c, 0, jit_debug_info_new(__FILE__, __func__, __LINE__))
 
-#define jit_bner(jit, a, b, c) jit_add_op(jit, JIT_BNE | REG, SPEC(IMM, REG, REG), a, b, c, 0, jit_debug_info_new(__FILE__, __func__, __LINE__))
-#define jit_bnei(jit, a, b, c) jit_add_op(jit, JIT_BNE | IMM, SPEC(IMM, REG, IMM), a, b, c, 0, jit_debug_info_new(__FILE__, __func__, __LINE__))
+#define jit_bner(jit, a, b, c) jit_add_op(jit, JIT_BNE | REG, SPEC(IMM, REG, REG), (jit_value)(a), b, c, 0, jit_debug_info_new(__FILE__, __func__, __LINE__))
+#define jit_bnei(jit, a, b, c) jit_add_op(jit, JIT_BNE | IMM, SPEC(IMM, REG, IMM), (jit_value)(a), b, c, 0, jit_debug_info_new(__FILE__, __func__, __LINE__))
 
-#define jit_bmsr(jit, a, b, c) jit_add_op(jit, JIT_BMS | REG, SPEC(IMM, REG, REG), a, b, c, 0, jit_debug_info_new(__FILE__, __func__, __LINE__))
-#define jit_bmsi(jit, a, b, c) jit_add_op(jit, JIT_BMS | IMM, SPEC(IMM, REG, IMM), a, b, c, 0, jit_debug_info_new(__FILE__, __func__, __LINE__))
+#define jit_bmsr(jit, a, b, c) jit_add_op(jit, JIT_BMS | REG, SPEC(IMM, REG, REG), (jit_value)(a), b, c, 0, jit_debug_info_new(__FILE__, __func__, __LINE__))
+#define jit_bmsi(jit, a, b, c) jit_add_op(jit, JIT_BMS | IMM, SPEC(IMM, REG, IMM), (jit_value)(a), b, c, 0, jit_debug_info_new(__FILE__, __func__, __LINE__))
 
-#define jit_bmcr(jit, a, b, c) jit_add_op(jit, JIT_BMC | REG, SPEC(IMM, REG, REG), a, b, c, 0, jit_debug_info_new(__FILE__, __func__, __LINE__))
-#define jit_bmci(jit, a, b, c) jit_add_op(jit, JIT_BMC | IMM, SPEC(IMM, REG, IMM), a, b, c, 0, jit_debug_info_new(__FILE__, __func__, __LINE__))
+#define jit_bmcr(jit, a, b, c) jit_add_op(jit, JIT_BMC | REG, SPEC(IMM, REG, REG), (jit_value)(a), b, c, 0, jit_debug_info_new(__FILE__, __func__, __LINE__))
+#define jit_bmci(jit, a, b, c) jit_add_op(jit, JIT_BMC | IMM, SPEC(IMM, REG, IMM), (jit_value)(a), b, c, 0, jit_debug_info_new(__FILE__, __func__, __LINE__))
 
-#define jit_boaddr(jit, a, b, c) jit_add_op(jit, JIT_BOADD | REG | SIGNED, SPEC(IMM, REG, REG), a, b, c, 0, jit_debug_info_new(__FILE__, __func__, __LINE__))
-#define jit_boaddi(jit, a, b, c) jit_add_op(jit, JIT_BOADD | IMM | SIGNED, SPEC(IMM, REG, IMM), a, b, c, 0, jit_debug_info_new(__FILE__, __func__, __LINE__))
+#define jit_boaddr(jit, a, b, c) jit_add_op(jit, JIT_BOADD | REG | SIGNED, SPEC(IMM, REG, REG), (jit_value)(a), b, c, 0, jit_debug_info_new(__FILE__, __func__, __LINE__))
+#define jit_boaddi(jit, a, b, c) jit_add_op(jit, JIT_BOADD | IMM | SIGNED, SPEC(IMM, REG, IMM), (jit_value)(a), b, c, 0, jit_debug_info_new(__FILE__, __func__, __LINE__))
 
-#define jit_bosubr(jit, a, b, c) jit_add_op(jit, JIT_BOSUB | REG | SIGNED, SPEC(IMM, REG, REG), a, b, c, 0, jit_debug_info_new(__FILE__, __func__, __LINE__))
-#define jit_bosubi(jit, a, b, c) jit_add_op(jit, JIT_BOSUB | IMM | SIGNED, SPEC(IMM, REG, IMM), a, b, c, 0, jit_debug_info_new(__FILE__, __func__, __LINE__))
+#define jit_bosubr(jit, a, b, c) jit_add_op(jit, JIT_BOSUB | REG | SIGNED, SPEC(IMM, REG, REG), (jit_value)(a), b, c, 0, jit_debug_info_new(__FILE__, __func__, __LINE__))
+#define jit_bosubi(jit, a, b, c) jit_add_op(jit, JIT_BOSUB | IMM | SIGNED, SPEC(IMM, REG, IMM), (jit_value)(a), b, c, 0, jit_debug_info_new(__FILE__, __func__, __LINE__))
 
-#define jit_bnoaddr(jit, a, b, c) jit_add_op(jit, JIT_BNOADD | REG | SIGNED, SPEC(IMM, REG, REG), a, b, c, 0, jit_debug_info_new(__FILE__, __func__, __LINE__))
-#define jit_bnoaddi(jit, a, b, c) jit_add_op(jit, JIT_BNOADD | IMM | SIGNED, SPEC(IMM, REG, IMM), a, b, c, 0, jit_debug_info_new(__FILE__, __func__, __LINE__))
+#define jit_bnoaddr(jit, a, b, c) jit_add_op(jit, JIT_BNOADD | REG | SIGNED, SPEC(IMM, REG, REG), (jit_value)(a), b, c, 0, jit_debug_info_new(__FILE__, __func__, __LINE__))
+#define jit_bnoaddi(jit, a, b, c) jit_add_op(jit, JIT_BNOADD | IMM | SIGNED, SPEC(IMM, REG, IMM), (jit_value)(a), b, c, 0, jit_debug_info_new(__FILE__, __func__, __LINE__))
 
-#define jit_bnosubr(jit, a, b, c) jit_add_op(jit, JIT_BNOSUB | REG | SIGNED, SPEC(IMM, REG, REG), a, b, c, 0, jit_debug_info_new(__FILE__, __func__, __LINE__))
-#define jit_bnosubi(jit, a, b, c) jit_add_op(jit, JIT_BNOSUB | IMM | SIGNED, SPEC(IMM, REG, IMM), a, b, c, 0, jit_debug_info_new(__FILE__, __func__, __LINE__))
+#define jit_bnosubr(jit, a, b, c) jit_add_op(jit, JIT_BNOSUB | REG | SIGNED, SPEC(IMM, REG, REG), (jit_value)(a), b, c, 0, jit_debug_info_new(__FILE__, __func__, __LINE__))
+#define jit_bnosubi(jit, a, b, c) jit_add_op(jit, JIT_BNOSUB | IMM | SIGNED, SPEC(IMM, REG, IMM), (jit_value)(a), b, c, 0, jit_debug_info_new(__FILE__, __func__, __LINE__))
 
 /* conditions */
 
@@ -584,8 +584,8 @@ int jit_allocai(struct jit * jit, int size);
 #define jit_fbeqr(jit, a, b, c) jit_add_fop(jit, JIT_FBEQ | REG, SPEC(IMM, REG, REG), (jit_value)(a), b, c, 0, 0, jit_debug_info_new(__FILE__, __func__, __LINE__))
 #define jit_fbeqi(jit, a, b, c) jit_add_fop(jit, JIT_FBEQ | IMM, SPEC(IMM, REG, IMM), (jit_value)(a), b, 0, c, 0, jit_debug_info_new(__FILE__, __func__, __LINE__))
 
-#define jit_fbner(jit, a, b, c) jit_add_fop(jit, JIT_FBNE | REG, SPEC(IMM, REG, REG), a, b, c, 0, 0, jit_debug_info_new(__FILE__, __func__, __LINE__))
-#define jit_fbnei(jit, a, b, c) jit_add_fop(jit, JIT_FBNE | IMM, SPEC(IMM, REG, IMM), a, b, 0, c, 0, jit_debug_info_new(__FILE__, __func__, __LINE__))
+#define jit_fbner(jit, a, b, c) jit_add_fop(jit, JIT_FBNE | REG, SPEC(IMM, REG, REG), (jit_value)(a), b, c, 0, 0, jit_debug_info_new(__FILE__, __func__, __LINE__))
+#define jit_fbnei(jit, a, b, c) jit_add_fop(jit, JIT_FBNE | IMM, SPEC(IMM, REG, IMM), (jit_value)(a), b, 0, c, 0, jit_debug_info_new(__FILE__, __func__, __LINE__))
 
 #define jit_fstr(jit, a, b, c) jit_add_op(jit, JIT_FST | REG, SPEC(REG, REG, NO), a, b, 0, c, jit_debug_info_new(__FILE__, __func__, __LINE__))
 #define jit_fsti(jit, a, b, c) jit_add_op(jit, JIT_FST | IMM, SPEC(IMM, REG, NO), (jit_value)(a), b, 0, c, jit_debug_info_new(__FILE__, __func__, __LINE__))
