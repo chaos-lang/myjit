@@ -451,6 +451,9 @@ void jit_generate_code(struct jit * jit)
 		switch (GET_OP(op)) {
 			case JIT_DATA_BYTE: *(jit->ip)++ = (unsigned char) op->arg[0]; break;
 			case JIT_DATA_BYTES: 
+				while (jit->buf_capacity - (jit->ip - jit->buf) < op->arg[0])
+					jit_buf_expand(jit);
+				
 				for (int i = 0; i < op->arg[0]; i++)
 					*(jit->ip)++ = *(((unsigned char *) op->addendum) + i);
 				break;
