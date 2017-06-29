@@ -290,6 +290,28 @@ DEFINE_TEST(test17)
 	return 0;
 }
 
+DEFINE_TEST(test18)
+{
+	const int SIZE = 700000;
+	unsigned char *data = calloc(1, SIZE);
+	plfl f1;
+
+	jit_prolog(p, &f1);
+	jit_op *exit = jit_jmpi(p, JIT_FORWARD);
+	jit_data_bytes(p, SIZE, data);
+	jit_code_align(p, 16);
+
+	jit_patch(p, exit);
+	jit_reti(p, 10);
+	jit_disable_optimization(p, JIT_OPT_ALL);
+	JIT_GENERATE_CODE(p);
+
+	ASSERT_EQ(10, f1(0));
+	free(data);
+
+	return 0;
+}
+
 
 
 void test_setup() 
@@ -303,4 +325,5 @@ void test_setup()
 	SETUP_TEST(test15);
 	SETUP_TEST(test16);
 	SETUP_TEST(test17);
+	SETUP_TEST(test18);
 }
