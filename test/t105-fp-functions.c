@@ -468,6 +468,56 @@ DEFINE_TEST(test13)
 	return 0;
 }
 
+float addiif(int x, int y, float z) {
+	return x + y + z;
+}
+
+DEFINE_TEST(test14)
+{
+	pfff f1; 
+
+	jit_prolog(p, &f1);
+	jit_declare_arg(p, JIT_FLOAT_NUM, sizeof(double));
+	jit_getarg(p, FR(1), 0);
+
+	jit_prepare(p);
+	jit_putargi(p, 3);
+	jit_putargi(p, 4);
+	jit_fputargr(p, FR(1), sizeof(float));
+	jit_call(p, addiif);
+	jit_fretval(p, FR(0), sizeof(float));
+	jit_fretr(p, FR(0), sizeof(float));
+
+	JIT_GENERATE_CODE(p);
+
+	ASSERT_EQ_DOUBLE(8.1, f1(1.1));
+
+	return 0;
+}
+
+DEFINE_TEST(test15)
+{
+	pfff f1; 
+
+	jit_prolog(p, &f1);
+	jit_declare_arg(p, JIT_FLOAT_NUM, sizeof(double));
+	jit_getarg(p, FR(1), 0);
+
+	jit_prepare(p);
+	jit_putargi(p, 3);
+	jit_putargi(p, 4);
+	jit_fputargr(p, FR(1), sizeof(float));
+	jit_call(p, addiif);
+	jit_fretval(p, FR(0), sizeof(float));
+	jit_fretr(p, FR(0), sizeof(double));
+
+	JIT_GENERATE_CODE(p);
+
+	ASSERT_EQ_DOUBLE(8.1, f1(1.1));
+
+	return 0;
+}
+
 
 void test_setup()
 {
@@ -484,4 +534,6 @@ void test_setup()
 	SETUP_TEST(test11); 
 	SETUP_TEST(test12); 
 	SETUP_TEST(test13); 
+	SETUP_TEST(test14); 
+	SETUP_TEST(test15); 
 }

@@ -11,6 +11,17 @@ DEFINE_TEST(test1)
 	return 0;
 }
 
+DEFINE_TEST(test1f)
+{
+	pffv f1;
+	jit_prolog(p, &f1);
+	jit_freti(p, 123, sizeof(float));
+	JIT_GENERATE_CODE(p);
+
+	ASSERT_EQ_DOUBLE(123.0, f1());
+	return 0;
+}
+
 DEFINE_TEST(test2)
 {
 	pdfv f1;
@@ -19,6 +30,20 @@ DEFINE_TEST(test2)
 	jit_faddi(p, FR(0), FR(0), 200);
 	jit_faddi(p, FR(1), FR(0), 200);
 	jit_fretr(p, FR(1), sizeof(double));
+	JIT_GENERATE_CODE(p);
+
+	ASSERT_EQ_DOUBLE(500.0, f1());
+	return 0;
+}
+
+DEFINE_TEST(test2f)
+{
+	pffv f1;
+	jit_prolog(p, &f1);
+	jit_fmovi(p, FR(0), 100);
+	jit_faddi(p, FR(0), FR(0), 200);
+	jit_faddi(p, FR(1), FR(0), 200);
+	jit_fretr(p, FR(1), sizeof(float));
 	JIT_GENERATE_CODE(p);
 
 	ASSERT_EQ_DOUBLE(500.0, f1());
@@ -34,6 +59,21 @@ DEFINE_TEST(test3)
 	jit_fsubi(p, FR(1), FR(0), 50);
 	jit_fsubr(p, FR(2), FR(1), FR(0));
 	jit_fretr(p, FR(2), sizeof(double));
+	JIT_GENERATE_CODE(p);
+
+	ASSERT_EQ_DOUBLE(-50.0, f1());
+	return 0;
+}
+
+DEFINE_TEST(test3f)
+{
+	pffv f1;
+	jit_prolog(p, &f1);
+	jit_fmovi(p, FR(0), 100);
+	jit_faddr(p, FR(0), FR(0), FR(0));
+	jit_fsubi(p, FR(1), FR(0), 50);
+	jit_fsubr(p, FR(2), FR(1), FR(0));
+	jit_fretr(p, FR(2), sizeof(float));
 	JIT_GENERATE_CODE(p);
 
 	ASSERT_EQ_DOUBLE(-50.0, f1());
@@ -60,6 +100,26 @@ DEFINE_TEST(test4)
 	return 0;
 }
 
+DEFINE_TEST(test4f)
+{
+	pffv f1;
+	jit_prolog(p, &f1);
+	jit_movi(p, R(0), 100);
+	jit_movi(p, R(1), 50);
+
+	jit_extr(p, FR(0), R(0));
+	jit_extr(p, FR(1), R(1));
+
+	jit_faddr(p, FR(0), FR(0), FR(0));
+	jit_fsubr(p, FR(1), FR(0), FR(1));
+	jit_fsubr(p, FR(2), FR(1), FR(0));
+	jit_fretr(p, FR(2), sizeof(float));
+	JIT_GENERATE_CODE(p);
+
+	ASSERT_EQ_DOUBLE(-50.0, f1());
+	return 0;
+}
+
 DEFINE_TEST(test5)
 {
 	pdfv f1;
@@ -76,6 +136,22 @@ DEFINE_TEST(test5)
 	return 0;
 }
 
+DEFINE_TEST(test5f)
+{
+	pdfv f1;
+	jit_prolog(p, &f1);
+	jit_fmovi(p, FR(0), 100.0);
+	jit_fmovr(p, FR(1), FR(0));
+	jit_faddi(p, FR(0), FR(0), 20);
+
+	jit_faddr(p, FR(2), FR(0), FR(1));
+	jit_fretr(p, FR(2), sizeof(float));
+	JIT_GENERATE_CODE(p);
+
+	ASSERT_EQ_DOUBLE(220.0, f1());
+	return 0;
+}
+
 DEFINE_TEST(test10)
 {
 	double x = 123.4;
@@ -84,6 +160,20 @@ DEFINE_TEST(test10)
 	jit_movi(p, R(0), &x);
 	jit_fldr(p, FR(0), R(0), sizeof(double));
 	jit_fretr(p, FR(0), sizeof(double));
+	JIT_GENERATE_CODE(p);
+
+	ASSERT_EQ_DOUBLE(123.4, f1());
+	return 0;
+}
+
+DEFINE_TEST(test10f)
+{
+	float x = 123.4;
+	pffv f1;
+	jit_prolog(p, &f1);
+	jit_movi(p, R(0), &x);
+	jit_fldr(p, FR(0), R(0), sizeof(float));
+	jit_fretr(p, FR(0), sizeof(float));
 	JIT_GENERATE_CODE(p);
 
 	ASSERT_EQ_DOUBLE(123.4, f1());
@@ -117,6 +207,7 @@ DEFINE_TEST(test12)
 	return 0;
 }
 
+
 DEFINE_TEST(test13)
 {
 	float x = 123.4;
@@ -139,6 +230,21 @@ DEFINE_TEST(test14)
 	jit_movi(p, R(1), sizeof(double));
 	jit_fldxr(p, FR(0), R(0), R(1), sizeof(double));
 	jit_fretr(p, FR(0), sizeof(double));
+	JIT_GENERATE_CODE(p);
+
+	ASSERT_EQ_DOUBLE(2.2, f1());
+	return 0;
+}
+
+DEFINE_TEST(test14f)
+{
+	float x[] = { 1.1, 2.2, 3.3 };
+	pffv f1;
+	jit_prolog(p, &f1);
+	jit_movi(p, R(0), &x);
+	jit_movi(p, R(1), sizeof(float));
+	jit_fldxr(p, FR(0), R(0), R(1), sizeof(float));
+	jit_fretr(p, FR(0), sizeof(float));
 	JIT_GENERATE_CODE(p);
 
 	ASSERT_EQ_DOUBLE(2.2, f1());
@@ -300,11 +406,19 @@ void test_setup()
 	SETUP_TEST(test4);
 	SETUP_TEST(test5);
 
+	SETUP_TEST(test1f);
+	SETUP_TEST(test2f);
+	SETUP_TEST(test3f);
+	SETUP_TEST(test4f);
+	SETUP_TEST(test5f);
+
 	SETUP_TEST(test10);
+	SETUP_TEST(test10f);
 	SETUP_TEST(test11);
 	SETUP_TEST(test12);
 	SETUP_TEST(test13);
 	SETUP_TEST(test14);
+	SETUP_TEST(test14f);
 
 	SETUP_TEST(test20);
 	SETUP_TEST(test21);
