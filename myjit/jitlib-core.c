@@ -18,10 +18,12 @@
  */
 
 #define _BSD_SOURCE
+#define _DARWIN_C_SOURCE
 
 
 #include <stdio.h>
 #include <stdlib.h>
+#include <sys/types.h>
 #include <sys/mman.h>
 #include <unistd.h>
 

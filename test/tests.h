@@ -9,6 +9,7 @@ typedef jit_value (*plfl)(jit_value);
 typedef jit_value (*plfll)(jit_value, jit_value);
 typedef double (*pdfv)(void);
 typedef float (*pffv)(void);
+typedef float (*pfff)(float);
 typedef double (*pdfd)(double);
 typedef jit_value (*plfd)(double);
 typedef void * (*ppfl)(jit_value);
@@ -25,7 +26,7 @@ typedef void * (*ppfl)(jit_value);
 #define OPT_ALL         0x200
 
 
-#define TOLERANCE	0.00001
+#define TOLERANCE	0.0001
 #define MAX_NUMBER_OF_TEST      (1024)
 
 typedef int(*test_case_fn)(struct jit *, char *, int);
