@@ -336,16 +336,25 @@ static void emit_trace_op(struct jit *jit, jit_op *op)
 static void emit_fret_op(struct jit * jit, jit_op * op)
 {
 	jit_value arg = op->r_arg[0];
-
+	jit_hw_reg *ret_reg = jit->reg_al->fpret_reg ;
+	if (op->arg_size == sizeof(float)) {
+		sse_cvtsd2ss_reg_reg(jit->ip, ret_reg->id, arg);
+	} else {
+		if (ret_reg->id != arg) sse_movsd_reg_reg(jit->ip, ret_reg->id, arg);
+	}	
+/*
 	if (op->arg_size == sizeof(float)) 
 		sse_cvtsd2ss_reg_reg(jit->ip, arg, arg);
 
 	// pushes the value beyond the top of the stack
-	sse_movlpd_membase_xreg(jit->ip, arg, COMMON86_SP, -8); 
+	if ((op->arg_size == sizeof(float))) sse_movss_reg_membase(jit->ip, arg, COMMON86_SP, -8); 
+	else sse_movlpd_membase_xreg(jit->ip, arg, COMMON86_SP, -8); 
 	common86_mov_reg_membase(jit->ip, COMMON86_AX, COMMON86_SP, -8, 8);
-	// transfers the value from the stack to RAX
-	sse_movsd_reg_membase(jit->ip, COMMON86_XMM0, COMMON86_SP, -8);
+	// transfers the value from the stack to XMM0
 
+	if (op->arg_size == sizeof(float)) sse_movss_reg_membase(jit->ip, COMMON86_XMM0, COMMON86_SP, -8);
+	else sse_movsd_reg_membase(jit->ip, COMMON86_XMM0, COMMON86_SP, -8);
+*/
 	// common epilogue
 	jit->push_count -= emit_pop_callee_saved_regs(jit);
 	if (jit_current_func_info(jit)->has_prolog) {

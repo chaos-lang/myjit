@@ -477,7 +477,7 @@ DEFINE_TEST(test14)
 	pfff f1; 
 
 	jit_prolog(p, &f1);
-	jit_declare_arg(p, JIT_FLOAT_NUM, sizeof(double));
+	jit_declare_arg(p, JIT_FLOAT_NUM, sizeof(float));
 	jit_getarg(p, FR(1), 0);
 
 	jit_prepare(p);
@@ -497,7 +497,7 @@ DEFINE_TEST(test14)
 
 DEFINE_TEST(test15)
 {
-	pfff f1; 
+	pffd f1; 
 
 	jit_prolog(p, &f1);
 	jit_declare_arg(p, JIT_FLOAT_NUM, sizeof(double));
@@ -508,8 +508,9 @@ DEFINE_TEST(test15)
 	jit_putargi(p, 4);
 	jit_fputargr(p, FR(1), sizeof(float));
 	jit_call(p, addiif);
-	jit_fretval(p, FR(0), sizeof(float));
-	jit_fretr(p, FR(0), sizeof(double));
+	jit_fretval(p, FR(1), sizeof(float));
+
+	jit_fretr(p, FR(1), sizeof(float));
 
 	JIT_GENERATE_CODE(p);
 

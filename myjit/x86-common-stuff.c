@@ -73,7 +73,7 @@ void jit_optimize_st_ops(struct jit * jit)
 
 void jit_optimize_frame_ptr(struct jit * jit)
 {
-	if (!jit->optimizations & JIT_OPT_OMIT_FRAME_PTR) return;
+	if (!(jit->optimizations & JIT_OPT_OMIT_FRAME_PTR)) return;
 
 	struct jit_func_info * info = NULL;
 	int uses_frame_ptr = 0;

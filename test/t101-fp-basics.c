@@ -138,7 +138,7 @@ DEFINE_TEST(test5)
 
 DEFINE_TEST(test5f)
 {
-	pdfv f1;
+	pffv f1;
 	jit_prolog(p, &f1);
 	jit_fmovi(p, FR(0), 100.0);
 	jit_fmovr(p, FR(1), FR(0));

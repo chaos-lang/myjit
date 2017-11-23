@@ -292,7 +292,7 @@ DEFINE_TEST(test17)
 
 DEFINE_TEST(test18)
 {
-	const int SIZE = 700000;
+	const int SIZE = 7000;
 	unsigned char *data = calloc(1, SIZE);
 	plfl f1;
 
