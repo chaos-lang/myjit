@@ -198,6 +198,12 @@ static inline int flw_analyze_op(struct jit * jit, jit_op * op, struct jit_func_
 	
 	if (op->code == (JIT_JMP | IMM)) goto skip;
 
+	if ((GET_OP(op) == JIT_RET) || (GET_OP(op) == JIT_FRET)) {
+		op->live_out = jit_set_new();
+		goto skip;
+	}
+
+
 	if (op->next) jit_set_addall(op->live_out, op->next->live_in);
 
 
