@@ -595,8 +595,11 @@ static inline void branch_adjustment(struct jit * jit, jit_op * op)
 	jit_rmap * cur_regmap = op->regmap;
 	jit_rmap * tgt_regmap = op->jmp_addr->regmap;
 
-	//if (!rmap_equal(op, cur_regmap, tgt_regmap)) {
-	if (!rmap_subset(op, tgt_regmap->map, cur_regmap->map)) {
+	if (!rmap_equal(op, cur_regmap, tgt_regmap)) {
+        // under normal circumstances the "subset" should be sufficient condition
+        // however, linear-scan allocator we use handles branch ops as a common
+        // operations and is unable to assign correct register maps to target ops
+	//if (!rmap_subset(op, tgt_regmap->map, cur_regmap->map)) {
 		switch (GET_OP(op)) {
 			case JIT_BEQ: op->code = JIT_BNE | (op->code & 0x7); break;
 			case JIT_BGT: op->code = JIT_BLE | (op->code & 0x7); break;
