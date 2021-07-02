@@ -16,11 +16,13 @@ DEFINE_TEST(test1)
 	jit_declare_arg(p, JIT_SIGNED_NUM, sizeof(long));
 	jit_getarg(p, R(0), 0);
 	jit_movi(p, R(1), 1);
+	jit_fmovi(p, FR(0), 3.14);
 
 	jit_msg(p, "Check 1.\n");
 	jit_label * loop = jit_get_label(p);
 	jit_op * o = jit_blei(p, JIT_FORWARD, R(0), 0);
 	jit_msgr(p, "Check R(1): %i\n", R(1));
+	jit_fmsgr(p, "Check FR(0): %lf\n", FR(0));
 	jit_mulr(p, R(1), R(1), R(0));
 	jit_subi(p, R(0), R(0), 1);
 	jit_jmpi(p, loop);

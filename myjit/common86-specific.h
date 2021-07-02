@@ -1077,6 +1077,7 @@ void jit_gen_op(struct jit * jit, struct jit_op * op)
 		case JIT_FPUTARG: funcall_fput_arg(jit, op); break;
 		case JIT_GETARG: emit_get_arg(jit, op); break;
 		case JIT_MSG: 	emit_msg_op(jit, op); break;
+		case JIT_FMSG: 	emit_fmsg_op(jit, op); break;
 		case JIT_TRACE: emit_trace_op(jit, op);
 				while (((unsigned long) jit->ip) % 16)
 					common86_nop(jit->ip);

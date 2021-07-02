@@ -258,7 +258,8 @@ typedef enum {
 	JIT_TRANSFER_SUBS = (0xc8 << 3),
 
 	JIT_MSG		= (0xf0 << 3),
-	JIT_COMMENT	= (0xf1 << 3),
+	JIT_FMSG	= (0xf1 << 3),
+	JIT_COMMENT	= (0xf2 << 3),
 
 	// platform specific opcodes, for optimization purposes only
 	JIT_X86_STI     = (0x0100 << 3),
@@ -545,6 +546,7 @@ int jit_allocai(struct jit * jit, int size);
 
 #define jit_msg(jit, a) jit_add_op(jit, JIT_MSG | IMM, SPEC(IMM, NO, NO), (jit_value)(a), 0, 0, 0, jit_debug_info_new(__FILE__, __func__, __LINE__))
 #define jit_msgr(jit, a, b) jit_add_op(jit, JIT_MSG | REG, SPEC(IMM, REG, NO), (jit_value)(a), b, 0, 0, jit_debug_info_new(__FILE__, __func__, __LINE__))
+#define jit_fmsgr(jit, a, b) jit_add_fop(jit, JIT_FMSG | REG, SPEC(IMM, REG, NO), (jit_value)(a), b, 0, 0, 0, jit_debug_info_new(__FILE__, __func__, __LINE__))
 #define jit_comment(jit, a) jit_add_op(jit, JIT_COMMENT, SPEC(IMM, NO, NO), (jit_value)(a), 0, 0, 0, jit_debug_info_new(__FILE__, __func__, __LINE__))
 
 /* FPU */
