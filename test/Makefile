@@ -1,7 +1,7 @@
 all: gp fp misc optim
 
 gp: t001 t002 t003 t004 t005 t006 t007 t008 t009 t010
-	
+
 fp: t101 t102 t103 t104 t105 t107 t108 t109
 
 optim: t301 t302
@@ -48,7 +48,7 @@ t102: t102-fp-arithmetic.c jitlib-core.o tests.h
 	$(CC) $(CFLAGS) -o t102 t102-fp-arithmetic.c jitlib-core.o
 
 t103: t103-fp-rounding.c jitlib-core.o tests.h
-	$(CC) $(CFLAGS) -o t103 -lm t103-fp-rounding.c jitlib-core.o
+	$(CC) $(CFLAGS) -o t103 t103-fp-rounding.c jitlib-core.o -lm
 
 t104: t104-fp-branches.c jitlib-core.o tests.h
 	$(CC) $(CFLAGS) -o t104 t104-fp-branches.c jitlib-core.o
@@ -133,13 +133,16 @@ clean:
 
 coverage: CFLAGS+=--coverage
 coverage: clean coverage-run gen-coverage
+test: clean all run-tests
 
-gen-coverage: 
+gen-coverage:
 	lcov --capture --directory ../ --output-file coverage.info
 	genhtml coverage.info --output-directory coverage
 
-coverage-run: all
+run-tests:
 	./run-tests.sh
+
+coverage-run: all run-tests
 	./t401 -l > /dev/null
 	./t401 --all --code > /dev/null
 	./t401 --all --compilable > /dev/null

@@ -20,6 +20,8 @@ myjit-disassembler:
 	$(MAKE) -C disasm
 	ln -s disasm/myjit-disasm .
 
+run-tests:
+	cd test && ${MAKE} test
 
 
 
