@@ -310,7 +310,7 @@ static void emit_fmsg_op(struct jit * jit, jit_op * op)
 	common86_alu_reg_imm(jit->ip, X86_SUB, AMD64_RSP, 8);
 	sse_movsd_reg_reg(jit->ip, AMD64_XMM0, op->r_arg[1]);
 	amd64_mov_reg_imm_size(jit->ip, AMD64_RDI, op->r_arg[0], 8);
-	amd64_mov_reg_reg_size(jit->ip, AMD64_RAX, 1, 8);
+	amd64_mov_reg_imm_size(jit->ip, AMD64_RAX, 1, 8);
 	amd64_mov_reg_imm(jit->ip, AMD64_RDX, printf);
 	amd64_call_reg(jit->ip, AMD64_RDX);
 	common86_alu_reg_imm(jit->ip, X86_ADD, AMD64_RSP, 8);

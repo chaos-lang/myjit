@@ -281,6 +281,7 @@ char * jit_get_op_name(struct jit_op * op)
 		case JIT_SYNCREG:	return ".syncreg";
 		case JIT_RENAMEREG:	return ".renamereg";
 		case JIT_MSG:		return "msg";
+		case JIT_FMSG:		return "fmsg";
 		case JIT_COMMENT:	return ".comment";
 		case JIT_NOP:		return "nop";
 		case JIT_CODE_ALIGN:	return ".align";
@@ -590,6 +591,7 @@ int print_op(FILE *f, struct jit_disasm * disasm, struct jit_op *op, jit_tree *l
 
 	switch (GET_OP(op)) {
 		case JIT_PREPARE: break;
+		case JIT_FMSG:
 		case JIT_MSG:
 			print_str(linebuf, (char *)op->arg[0]);
 			if (!IS_IMM(op)) {
@@ -709,6 +711,7 @@ int print_op_compilable(struct jit_disasm *disasm, struct jit_op * op, jit_tree 
 	ob_append(linebuf, "(p,");
 
 	switch (GET_OP(op)) {
+		case JIT_FMSG:
 		case JIT_MSG:
 			print_str(linebuf, (char *)op->arg[0]);
 			if (!IS_IMM(op)) {

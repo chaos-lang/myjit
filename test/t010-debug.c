@@ -16,13 +16,21 @@ DEFINE_TEST(test1)
 	jit_declare_arg(p, JIT_SIGNED_NUM, sizeof(long));
 	jit_getarg(p, R(0), 0);
 	jit_movi(p, R(1), 1);
-	jit_fmovi(p, FR(0), 3.14);
+	jit_movi(p, R(2), 999);
+	jit_movi(p, R(3), 111);
+	jit_fmovi(p, FR(0), 100.0);
+	jit_fmovi(p, FR(1), 3.14);
+	jit_fmovi(p, FR(2), 6.99);
 
 	jit_msg(p, "Check 1.\n");
 	jit_label * loop = jit_get_label(p);
 	jit_op * o = jit_blei(p, JIT_FORWARD, R(0), 0);
 	jit_msgr(p, "Check R(1): %i\n", R(1));
+	jit_msgr(p, "Check R(2): %i\n", R(2));
+	jit_msgr(p, "Check R(3): %i\n", R(3));
 	jit_fmsgr(p, "Check FR(0): %lf\n", FR(0));
+	jit_fmsgr(p, "Check FR(1): %lf\n", FR(1));
+	jit_fmsgr(p, "Check FR(2): %lf\n", FR(2));
 	jit_mulr(p, R(1), R(1), R(0));
 	jit_subi(p, R(0), R(0), 1);
 	jit_jmpi(p, loop);
@@ -40,7 +48,13 @@ DEFINE_TEST(test1)
 	stdout = old_stdout;
 
 	ASSERT_EQ(720, r);
-	ASSERT_EQ_STR("Check 1.\nCheck R(1): 1\nCheck R(1): 6\nCheck R(1): 30\nCheck R(1): 120\nCheck R(1): 360\nCheck R(1): 720\nCheck X.\n", buf);
+	ASSERT_EQ_STR("Check 1.\nCheck R(1): 1\nCheck R(2): 999\nCheck R(3): 111\nCheck FR(0): 100.000000\nCheck FR(1): 3.140000\n\
+Check FR(2): 6.990000\nCheck R(1): 6\nCheck R(2): 999\nCheck R(3): 111\nCheck FR(0): 100.000000\nCheck FR(1): 3.140000\n\
+Check FR(2): 6.990000\nCheck R(1): 30\nCheck R(2): 999\nCheck R(3): 111\nCheck FR(0): 100.000000\nCheck FR(1): 3.140000\n\
+Check FR(2): 6.990000\nCheck R(1): 120\nCheck R(2): 999\nCheck R(3): 111\nCheck FR(0): 100.000000\nCheck FR(1): 3.140000\n\
+Check FR(2): 6.990000\nCheck R(1): 360\nCheck R(2): 999\nCheck R(3): 111\nCheck FR(0): 100.000000\nCheck FR(1): 3.140000\n\
+Check FR(2): 6.990000\nCheck R(1): 720\nCheck R(2): 999\nCheck R(3): 111\nCheck FR(0): 100.000000\nCheck FR(1): 3.140000\n\
+Check FR(2): 6.990000\nCheck X.\n", buf);
 
 	return 0;
 #else

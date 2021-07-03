@@ -106,7 +106,6 @@ DEFINE_TEST(test4f)
 	jit_prolog(p, &f1);
 	jit_movi(p, R(0), 100);
 	jit_movi(p, R(1), 50);
-	jit_msgr(p, "Reg R1: %lld\n", R(1));
 
 	jit_extr(p, FR(0), R(0));
 	jit_extr(p, FR(1), R(1));
@@ -142,7 +141,6 @@ DEFINE_TEST(test5f)
 	pffv f1;
 	jit_prolog(p, &f1);
 	jit_fmovi(p, FR(0), 100.0);
-	jit_fmsgr(p, "Reg FR0: %lf\n", FR(0));
 	jit_fmovr(p, FR(1), FR(0));
 	jit_faddi(p, FR(0), FR(0), 20);
 
