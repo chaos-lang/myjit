@@ -307,13 +307,21 @@ static void emit_fmsg_op(struct jit * jit, jit_op * op)
 {
 	emit_save_all_regs(jit, op);
 
-	common86_alu_reg_imm(jit->ip, X86_SUB, AMD64_RSP, 8);
+	// stack alignment
+	amd64_push_reg(jit->ip, AMD64_RBX);
+	amd64_mov_reg_reg_size(jit->ip, AMD64_RBX, AMD64_RSP, 8);
+	amd64_alu_reg_imm_size(jit->ip, X86_AND, AMD64_RSP, ~0xf, 8);
+	amd64_alu_reg_imm_size(jit->ip, X86_SUB, AMD64_RSP, 16, 8);
+
 	sse_movsd_reg_reg(jit->ip, AMD64_XMM0, op->r_arg[1]);
 	amd64_mov_reg_imm_size(jit->ip, AMD64_RDI, op->r_arg[0], 8);
 	amd64_mov_reg_imm_size(jit->ip, AMD64_RAX, 1, 8);
 	amd64_mov_reg_imm(jit->ip, AMD64_RDX, printf);
 	amd64_call_reg(jit->ip, AMD64_RDX);
-	common86_alu_reg_imm(jit->ip, X86_ADD, AMD64_RSP, 8);
+
+	// restore stack
+	amd64_mov_reg_reg_size(jit->ip, AMD64_RSP, AMD64_RBX, 8);
+	amd64_pop_reg(jit->ip, AMD64_RBX);
 
 	emit_restore_all_regs(jit, op);
 }
@@ -342,6 +350,7 @@ static void emit_trace_op(struct jit *jit, jit_op *op)
 	amd64_mov_reg_imm(jit->ip, AMD64_R8, jit_trace_callback);
 	amd64_call_reg(jit->ip, AMD64_R8);
 
+	// restore stack
 	amd64_mov_reg_reg_size(jit->ip, AMD64_RSP, AMD64_RBX, 8);
 	amd64_pop_reg(jit->ip, AMD64_RBX);
 

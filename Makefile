@@ -17,6 +17,7 @@ debug: debug.c jitlib-core.o
 	$(CC) -o debug -g -Wall -std=c99 -pedantic debug.o jitlib-core.o -ldl
 
 myjit-disassembler:
+	rm myjit-disasm
 	$(MAKE) -C disasm
 	ln -s disasm/myjit-disasm .
 

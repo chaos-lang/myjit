@@ -244,12 +244,8 @@ static void emit_save_all_regs(struct jit *jit, jit_op *op)
 
 	for (int i = 0; i < al->fp_reg_cnt; i++) {
 		jit_hw_reg *reg = &al->fp_regs[i];
-		if (!reg->callee_saved && is_active_register(al, reg, op)) {
-			// Fix for debugging floating-point registers bigger than FR(0) / smaller than AMD64_XMM13
-			if (op->code == JIT_FMSG + 1 && reg->id < 13)
-				continue;
+		if (!reg->callee_saved && is_active_register(al, reg, op))
 			common86_push_xmm_reg(jit->ip, reg->id);
-		}
 	}
 	
 	int alignment = required_stack_space_for_regs(jit, op) % 16; 
@@ -265,12 +261,8 @@ static void emit_restore_all_regs(struct jit *jit, jit_op *op)
 
 	for (int i = al->fp_reg_cnt - 1; i >= 0; i--) {
 		jit_hw_reg *reg = &al->fp_regs[i];
-		if (!reg->callee_saved && is_active_register(al, reg, op)) {
-			// Fix for debugging floating-point registers bigger than FR(0) / smaller than AMD64_XMM13
-			if (op->code == JIT_FMSG + 1 && reg->id < 13)
-				continue;
+		if (!reg->callee_saved && is_active_register(al, reg, op))
 			common86_pop_xmm_reg(jit->ip, reg->id);
-		}
 	}
 
 	for (int i = al->gp_reg_cnt - 1; i >= 0; i--) {
