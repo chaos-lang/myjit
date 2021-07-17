@@ -21,6 +21,9 @@
 #ifndef LLRB_C
 #define LLRB_C
 
+#include "jitlib.h"
+#include <stdio.h>
+
 #define RED	(1)
 #define BLACK	(0)
 

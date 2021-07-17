@@ -20,6 +20,8 @@
  */
 
 #include <stdint.h>
+#include "set.h"
+
 #define IS_32BIT_VALUE(x) ((((long)(x)) >= INT32_MIN) && (((long)(x)) <= INT32_MAX))
 
 //

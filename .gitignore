@@ -45,3 +45,5 @@ doc/build/latex
 doc/build/web
 doc/build/assets/final-style.css
 .vscode/
+/cmake-build-debug
+

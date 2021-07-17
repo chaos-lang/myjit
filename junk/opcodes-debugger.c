@@ -1,5 +1,5 @@
-#include "../dis-asm/dis-asm.h"
-#include "../dis-asm/bfd.h"
+#include "../disasm/dis-asm.h"
+#include "../disasm/bfd.h"
 
 #define OUTPUT_BUF_SIZE		(8192)
 

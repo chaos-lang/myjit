@@ -37,6 +37,10 @@
 	#define JIT_ARCH_ARM32
 #endif
 
+#if defined(_WIN32) || defined(_WIN64) || defined(__CYGWIN__)
+  #define JIT_OS_WIN 1
+#endif
+
 // enable this to test register allocation
 #define JIT_REGISTER_TEST
 //#undef JIT_REGISTER_TEST

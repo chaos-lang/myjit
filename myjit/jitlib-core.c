@@ -24,14 +24,18 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include <sys/types.h>
-#include <sys/mman.h>
+
 #include <unistd.h>
 
-#include "cpu-detect.h"
-#include "jitlib.h"
-#include "jitlib-core.h"
 #include "set.h"
 
+#ifndef JIT_OS_WIN
+  #include <sys/mman.h>
+#endif
+
+#ifdef JIT_OS_WIN
+  #include <windows.h>
+#endif
 
 #ifdef JIT_ARCH_COMMON86
 #include "common86-specific.h"
@@ -46,8 +50,6 @@
 #include "arm32-specific.h"
 #endif
 
-#include "jitlib-debug.c"
-#include "code-check.c"
 #include "flow-analysis.h"
 #include "rmap.h"
 #include "reg-allocator.h"
@@ -487,8 +489,15 @@ void jit_generate_code(struct jit * jit)
 	//void * mem;
 	//posix_memalign(&mem, sysconf(_SC_PAGE_SIZE), code_size);
 	//mprotect(mem, code_size, PROT_READ | PROT_EXEC | PROT_WRITE);
+
+#ifdef JIT_OS_WIN
+  void *mem = VirtualAlloc(0, jit->buf_capacity, MEM_COMMIT | MEM_RESERVE,
+                           PAGE_EXECUTE_READWRITE);
+  if (!mem) perror("VirtualAlloc");
+#else,
 	void *mem = mmap(NULL, jit->buf_capacity, PROT_READ | PROT_EXEC | PROT_WRITE, MAP_ANON | MAP_PRIVATE, -1, 0);
 	if (mem == MAP_FAILED) perror("mmap");
+#endif
 	memcpy(mem, jit->buf, code_size);
 	JIT_FREE(jit->buf);
 
@@ -569,7 +578,12 @@ void jit_free(struct jit * jit)
 	free_ops(jit_op_first(jit->ops));
 	free_labels(jit->labels);
 	if (jit->buf) {
-		if (jit->mmaped_buf) munmap(jit->buf, jit->buf_capacity);
+		if (jit->mmaped_buf)
+#ifdef JIT_OS_WIN
+      VirtualFree(jit->buf, 0, MEM_RELEASE);
+#else
+      munmap(jit->buf, jit->buf_capacity);
+#endif
 		else JIT_FREE(jit->buf);
 	}
 	JIT_FREE(jit);

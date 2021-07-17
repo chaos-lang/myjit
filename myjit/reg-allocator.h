@@ -483,8 +483,8 @@ void jit_collect_statistics(struct jit * jit)
 	for (jit_op * op = jit_op_last(jit->ops); op != NULL; op = op->prev) {
 		jit_tree * new_hints = jit_tree_clone(last_hints);
 		op->normalized_pos = ops_from_return;
-	
-		// determines used registers	
+
+		// determines used registers
 		// FIXME: should be a separate function
 		jit_value regs[3];
 		int found_regs = 0;
@@ -498,10 +498,10 @@ void jit_collect_statistics(struct jit * jit)
 						break;
 					}
 				}
-				if (!found) regs[found_regs++] = reg; 
+				if (!found) regs[found_regs++] = reg;
 			}
 
-		// marks register usage 
+		// marks register usage
 		for (i = 0; i < found_regs; i++) {
 			jit_value reg = regs[i];
 
@@ -517,9 +517,9 @@ void jit_collect_statistics(struct jit * jit)
 
 			new_hint->last_pos = ops_from_return;
 #if defined (JIT_ARCH_COMMON86) || defined (JIT_ARCH_ARM32)
-			if ((GET_OP(op) == JIT_RETVAL) || (GET_OP(op) == JIT_RET)) 
+			if ((GET_OP(op) == JIT_RETVAL) || (GET_OP(op) == JIT_RET))
 				new_hint->should_be_eax++;
-#endif 
+#endif
 			new_hints = jit_tree_insert(new_hints, reg, new_hint, NULL);
 		}
 #if defined (JIT_ARCH_COMMON86) || defined (JIT_ARCH_ARM32)

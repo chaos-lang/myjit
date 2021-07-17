@@ -26,7 +26,11 @@
 #include <ctype.h>
 #include <unistd.h>
 #include <sys/types.h>
-#include <sys/wait.h>
+#include "jitlib-core.h"
+
+#ifndef JIT_OS_WIN
+  #include <sys/wait.h>
+#endif
 
 #define ABS(x)	((x) < 0 ? - (x) : x)
 
@@ -895,7 +899,7 @@ static void jit_dump_ops_combined(struct jit *jit, jit_tree *labels)
 	}
 
 	fclose(f);
-	wait(NULL);
+	//wait(NULL);
 }
 
 void jit_dump_ops(struct jit * jit, int verbosity)
@@ -923,7 +927,7 @@ void jit_trace_op(struct jit *jit, jit_op *op, int verbosity)
 		fprintf(f, "..addr=%lx\n", (unsigned long) op->code_offset);
 		print_combined_op(f, jit, op, labels);
 		fclose(f);
-		wait(NULL);
+		//wait(NULL);
 	}
 	
 	jit_tree_free(labels);	
