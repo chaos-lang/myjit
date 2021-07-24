@@ -17,10 +17,6 @@
  * Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301  USA
  */
 
-#include "jitlib-core.h"
-#include <stdio.h>
-#include <stdarg.h>
-
 static void jit_dead_code_analysis(struct jit *jit, int remove_dead_code);
 static inline void jit_expand_patches_and_labels(struct jit *jit);
 static inline void jit_flw_analysis(struct jit *jit);
@@ -28,10 +24,7 @@ static inline void jit_prepare_reg_counts(struct jit *jit);
 static inline void jit_prepare_arguments(struct jit *jit);
 void jit_get_reg_name(struct jit_disasm *disasm, char * r, int reg);
 
-#include "jitlib-core.h"
-#include "flow-analysis.h"
-
-/*static struct jit_disasm jit_debugging_disasm =  {
+static struct jit_disasm jit_debugging_disasm =  {
 	.indent_template = "    ",
 	.reg_template = "r%i",
 	.freg_template = "fr%i",
@@ -46,14 +39,14 @@ void jit_get_reg_name(struct jit_disasm *disasm, char * r, int reg);
 	.label_forward_template = "<label>",
 	.generic_addr_template = "<addr: 0x%lx>",
 	.generic_value_template = "0x%lx",
-};*/
+};
 
 
 
 static void report_warning(struct jit *jit, jit_op *op, char *desc)
 {
 	fprintf(stdout, "%s at function `%s' (%s:%i)\n", desc, op->debug_info->function, op->debug_info->filename, op->debug_info->lineno);
-	//print_op(stdout, &jit_debugging_disasm, op, NULL, 0);
+	print_op(stdout, &jit_debugging_disasm, op, NULL, 0);
 	fprintf(stdout, "\n");
 }
 
@@ -132,7 +125,7 @@ static void print_regs(jit_tree_key reg, jit_tree_value v, void *thunk)
 {
 	char buf[32];
 	if (reg == R_FP) return; 
-	//jit_get_reg_name(&jit_debugging_disasm, buf, reg);
+	jit_get_reg_name(&jit_debugging_disasm, buf, reg);
 	strcat(thunk, " ");
 	strcat(thunk, buf);
 }

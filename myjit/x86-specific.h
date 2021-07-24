@@ -149,8 +149,8 @@ void jit_patch_external_calls(struct jit * jit)
 		if (GET_OP(op) == JIT_FMSG)
 			x86_patch(jit->buf + (long)op->patch_addr, (unsigned char *)
 			printf);
-		/*if (GET_OP(op) == JIT_TRACE)
-			x86_patch(jit->buf + (long)op->patch_addr, (unsigned char *)jit_trace_callback);*/
+		if (GET_OP(op) == JIT_TRACE)
+			x86_patch(jit->buf + (long)op->patch_addr, (unsigned char *)jit_trace_callback);
 	}
 }
 

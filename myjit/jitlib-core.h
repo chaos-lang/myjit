@@ -23,12 +23,12 @@
 
 #include <stdio.h>
 #include <stdlib.h>
-#include "cpu-detect.h"
+#include "platform.h"
 
-#ifdef JIT_OS_WIN
-  #include <windows.h>
+#ifdef MYJIT_PLATFORM_WIN
+#	include <windows.h>
 #else
-  #include <sys/mman.h>
+#	include <sys/mman.h>
 #endif
 #include <unistd.h>
 #include <string.h>
@@ -84,8 +84,7 @@ struct jit_reg_allocator {
 };
 
 typedef struct jit_rmap {
-	struct jit_tree * map;		// R/B tree which maps virtual registers to
-	// hardware registers
+	jit_tree * map;		// R/B tree which maps virtual registers to hardware registers
 } jit_rmap;
 
 struct jit_allocator_hint {
@@ -115,7 +114,7 @@ typedef struct jit_prepared_args {
 } jit_prepared_args;
 
 typedef struct jit_set {
-	struct jit_tree * root;
+	jit_tree * root;
 } jit_set;
 
 struct jit_func_info {			// collection of information related to one function
@@ -204,7 +203,7 @@ int jit_reg_in_use(jit_op * op, int reg, int fp);
 jit_hw_reg * jit_get_unused_reg(struct jit_reg_allocator * al, jit_op * op, int fp);
 jit_hw_reg * jit_get_unused_reg_with_index(struct jit_reg_allocator * al, jit_op * op, int fp, int index);
 void rmap_free(jit_rmap * regmap);
-void jit_allocator_hints_free(struct jit_tree *);
+void jit_allocator_hints_free(jit_tree *);
 
 
 static struct jit_op * jit_op_new(unsigned short code, unsigned char spec, long arg1, long arg2, long arg3, unsigned char arg_size)

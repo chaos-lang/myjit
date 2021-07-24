@@ -2,6 +2,9 @@
 demo1
 demo2
 demo3
+demo1.exe
+demo2.exe
+demo3.exe
 test/t001
 test/t002
 test/t003
@@ -45,5 +48,5 @@ doc/build/latex
 doc/build/web
 doc/build/assets/final-style.css
 .vscode/
-/cmake-build-debug
+cmake-build-debug
 

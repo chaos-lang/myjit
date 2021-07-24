@@ -347,7 +347,7 @@ static void emit_trace_op(struct jit *jit, jit_op *op)
 	amd64_mov_reg_imm_size(jit->ip, AMD64_RDX, op->r_arg[0], 4);
 	amd64_mov_reg_imm_size(jit->ip, AMD64_RCX, trace, 4);
 	amd64_alu_reg_reg_size(jit->ip, X86_XOR, AMD64_RAX, AMD64_RAX, 8);
-	//amd64_mov_reg_imm(jit->ip, AMD64_R8, jit_trace_callback);
+	amd64_mov_reg_imm(jit->ip, AMD64_R8, jit_trace_callback);
 	amd64_call_reg(jit->ip, AMD64_R8);
 
 	// restore stack
