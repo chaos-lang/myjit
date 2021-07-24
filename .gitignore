@@ -43,10 +43,10 @@ test/coverage.info
 *.gcno
 test/coverage
 disasm/myjit-disasm
+disasm/myjit-disasm.exe
 myjit-disasm
 doc/build/latex
 doc/build/web
 doc/build/assets/final-style.css
 .vscode/
 cmake-build-debug
-
