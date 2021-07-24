@@ -139,7 +139,11 @@ static void compiler_based_debugger(struct jit * jit)
 
 	sprintf(cmd1, cmd1_fmt, obj_file_name);
 
+#ifdef MYJIT_PLATFORM_WIN
+	FILE * f = _popen(cmd1, "wt");
+#else
 	FILE * f = popen(cmd1, "w");
+#endif
 
 	int size = jit->ip - jit->buf;
 #ifndef __APPLE_CC__
@@ -156,7 +160,15 @@ static void compiler_based_debugger(struct jit * jit)
 	for (int i = 0; i < size; i++)
 		fprintf(f, ".byte 0x%x\n", (unsigned int) jit->buf[i]);
 #endif
+
+#ifdef MYJIT_PLATFORM_WIN
+	// TODO: Throws `Fatal error: can't create myjitP1kAlM: Permission denied`. Probably the process
+	// created by `_popen` does not have the right permissions. The command is:
+	// `gcc -x assembler -c -o myjitP1kAlM -`
+	_pclose(f);
+#else
 	pclose(f);
+#endif
 	
 
 	sprintf(cmd2, cmd2_fmt, obj_file_name);
@@ -808,6 +820,15 @@ static inline void print_op_bytes(FILE *f, struct jit *jit, jit_op *op) {
 
 static FILE *open_disasm()
 {
+#ifdef MYJIT_PLATFORM_WIN
+	FILE* gp;
+	char *path;	
+	path = "myjit-disasm.exe";
+	gp = _popen(path , "wt");
+	if (gp == NULL)
+    	return -1;
+	return gp;
+#else
 	int fds[2];
 	pipe(fds);
 
@@ -836,6 +857,7 @@ static FILE *open_disasm()
 	close(fds[0]); // read end
 	FILE * f = fdopen(fds[1], "w");
 	return f;
+#endif
 }
 
 static jit_op *print_combined_op(FILE *f, struct jit *jit, struct jit_op *op, jit_tree *labels)

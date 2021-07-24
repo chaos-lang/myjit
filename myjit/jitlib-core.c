@@ -32,12 +32,6 @@
 #include "jitlib-core.h"
 #include "set.h"
 
-#ifdef MYJIT_PLATFORM_WIN
-  #include <windows.h>
-#else
-  #include <sys/mman.h>
-#endif
-
 #ifdef JIT_ARCH_COMMON86
 #include "common86-specific.h"
 #endif

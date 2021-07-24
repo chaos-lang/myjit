@@ -14,6 +14,11 @@ IF [%1]==[] (
         EXIT /B 1
     )
 	%compiler% -o demo1 -g -Wall -std=c99 -pedantic demo1.o jitlib-core.o
+) ELSE IF [%1]==[myjit-disassembler] (
+    CD disasm
+    CALL make.bat
+    CD ..
+    XCOPY /K /D /H /Y disasm\myjit-disasm.exe .
 )
 EXIT /B 0
 
