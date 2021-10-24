@@ -17,23 +17,12 @@
  * Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301  USA
  */
 
-
-#ifndef LLRB_C
-#define LLRB_C
+#include <stdlib.h>
+#include "jitlib.h"
+#include "llrb.h"
 
 #define RED	(1)
 #define BLACK	(0)
-
-typedef jit_value jit_tree_key;
-typedef void * jit_tree_value;
-
-typedef struct jit_tree {
-	struct jit_tree * left;
-	struct jit_tree * right;
-	int color;
-	jit_tree_key key;
-	jit_tree_value value;
-} jit_tree;
 
 
 static inline int is_red(jit_tree * n)
@@ -277,5 +266,3 @@ static int jit_tree_size(jit_tree *h)
 	if (h == NULL) return 0;
 	return jit_tree_size(h->left) + jit_tree_size(h->right) + 1;
 }
-
-#endif

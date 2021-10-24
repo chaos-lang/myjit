@@ -30,7 +30,7 @@
 
 #define ABS(x)	((x) < 0 ? - (x) : x)
 
-#include "llrb.c"
+#include "llrb.h"
 
 #define OUTPUT_BUF_SIZE         (8192)
 //#define print_padding(buf, size) while (strlen((buf)) < (size)) { strcat((buf), " "); }
@@ -157,23 +157,6 @@ static void compiler_based_debugger(struct jit * jit)
 	close(obj_file_fd);
 	unlink(obj_file_name);
 }
-
-typedef struct jit_disasm {
-	char *indent_template;
-	char *reg_template;
-	char *freg_template;
-	char *arg_template;
-	char *farg_template;
-	char *reg_fp_template;
-	char *reg_out_template;
-	char *reg_imm_template;
-	char *reg_fimm_template;
-	char *reg_unknown_template;
-	char *label_template;
-	char *label_forward_template;
-	char *generic_addr_template;
-	char *generic_value_template;
-} jit_disasm;
 
 struct jit_disasm jit_disasm_general = {
 	.indent_template = "    ",   
