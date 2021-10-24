@@ -1,3 +1,10 @@
+#include <stdarg.h>
+#include <string.h>
+#include <stdio.h>
+#include "jitlib.h"
+#include "jitlib-core.h"
+#include "set.h"
+
 /*
  * MyJIT 
  * Copyright (C) 2015 Petr Krajca, <petr.krajca@upol.cz>

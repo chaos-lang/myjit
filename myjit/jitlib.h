@@ -26,6 +26,7 @@
 #include <stdlib.h>
 #include <string.h>
 #include "cpu-detect.h"
+#include "jitlib-debug.h"
 
 /*
  * Memory management
@@ -650,4 +651,5 @@ static inline jit_op *jit_data_bytes(struct jit *jit, jit_value count, unsigned 
 
 int jit_regs_active_count(jit_op *op);
 void jit_regs_active(jit_op *op, jit_value *dest);
-#endif
+
+#endif /* JITLIB_H */

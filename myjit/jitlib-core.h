@@ -26,8 +26,9 @@
 #include <sys/mman.h>
 #include <unistd.h>
 #include <string.h>
+
 #include "jitlib.h"
-#include "llrb.c"
+#include "llrb.h"
 
 
 #define FR_IMM	(jit_mkreg(JIT_RTYPE_FLOAT, JIT_RTYPE_IMM, 0))
@@ -94,7 +95,7 @@ typedef struct jit_prepared_args {
 	int gp_args;	// number of prepared GP arguments
 	int fp_args;	// number od prepared FP arguments
 	int stack_size; // size of stack occupied by passed arguments
-	jit_op * op;	// corresponding ``PREPARE'' operation
+	struct jit_op * op;	// corresponding ``PREPARE'' operation
 	struct jit_out_arg {// array of arguments
 		union {
 			long generic;
@@ -175,9 +176,9 @@ int jit_optimize_join_addmul(struct jit * jit);
 int jit_optimize_join_addimm(struct jit * jit);
 void jit_optimize_frame_ptr(struct jit * jit);
 void jit_optimize_unused_assignments(struct jit * jit);
-static int is_cond_branch_op(jit_op *op); // FIXME: rename to: jit_op_is_cond_branch
+static int is_cond_branch_op(struct jit_op *op); // FIXME: rename to: jit_op_is_cond_branch
 static inline void jit_set_free(jit_set * s);
-void jit_trace_callback(struct jit *jit, jit_op *op, int verbosity, int trace);
+void jit_trace_callback(struct jit *jit, struct jit_op *op, int verbosity, int trace);
 
 /**
  * Initialize argpos-th argument.
@@ -191,11 +192,11 @@ void jit_init_arg_params(struct jit * jit, struct jit_func_info * info, int argp
 void jit_assign_regs(struct jit * jit);
 struct jit_reg_allocator * jit_reg_allocator_create();
 void jit_reg_allocator_free(struct jit_reg_allocator * a);
-void jit_gen_op(struct jit * jit, jit_op * op);
+void jit_gen_op(struct jit * jit, struct jit_op * op);
 char * jit_reg_allocator_get_hwreg_name(struct jit_reg_allocator * al, int reg);
-int jit_reg_in_use(jit_op * op, int reg, int fp);
-jit_hw_reg * jit_get_unused_reg(struct jit_reg_allocator * al, jit_op * op, int fp);
-jit_hw_reg * jit_get_unused_reg_with_index(struct jit_reg_allocator * al, jit_op * op, int fp, int index);
+int jit_reg_in_use(struct jit_op * op, int reg, int fp);
+jit_hw_reg * jit_get_unused_reg(struct jit_reg_allocator * al, struct jit_op * op, int fp);
+jit_hw_reg * jit_get_unused_reg_with_index(struct jit_reg_allocator * al, struct jit_op * op, int fp, int index);
 void rmap_free(jit_rmap * regmap);
 void jit_allocator_hints_free(jit_tree *);
 
